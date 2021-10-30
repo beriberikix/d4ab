@@ -1,2 +1,2 @@
 # d4ab
-Bringing device APIs (like WebUSB) to all browsers
+Currently browser-based device APIs like WebUSB are only supported by Chromium-based browsers. This project is an attempt to polyfill these APIs on desktop browsers via WebExtensions and native binaries.
