@@ -1,6 +1,7 @@
 {
   "description": "Bringing device APIs (like WebUSB) to all browsers",
   "manifest_version": 2,
+  "name": "Devices 4 All Browsers",
   "version": "0.0.1",
   "icons": {
     "48": "icons/USB_icon.svg"
@@ -8,7 +9,7 @@
 
   "browser_specific_settings": {
     "gecko": {
-      "id": "d4ab.github.io",
+      "id": "{1404df31-28aa-47c9-8c06-08b99ff52f66}",
       "strict_min_version": "50.0"
     }
   },
