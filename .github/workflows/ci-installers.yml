@@ -2,10 +2,36 @@ name: CI Installers
 
 on:
   pull_request:
+    paths:
+      - installer/**
+      - backend/src/**
+      - backend/package.json
+      - backend/package-lock.json
+      - frontend/src/**
+      - frontend/manifest-chrome.json
+      - frontend/manifest-firefox.json
+      - frontend/package.json
+      - frontend/package-lock.json
+      - .github/workflows/ci-installers.yml
   push:
     branches:
       - main
+    paths:
+      - installer/**
+      - backend/src/**
+      - backend/package.json
+      - backend/package-lock.json
+      - frontend/src/**
+      - frontend/manifest-chrome.json
+      - frontend/manifest-firefox.json
+      - frontend/package.json
+      - frontend/package-lock.json
+      - .github/workflows/ci-installers.yml
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-platform-installers:
