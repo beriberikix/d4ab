@@ -10,10 +10,20 @@ class BackgroundServiceWorker {
     this.nativePort = null;
     this.pendingNativeRequests = new Map();
     this.nativeMessageId = 0;
+    this.nativeRequestMeta = new Map();
     this.isInitialized = false;
     this.connections = new Map(); // Tab ID -> connection info
     this.permissions = new Map(); // `${origin}:${deviceId}` -> Set(capabilities)
+    this.permissionMeta = new Map();
     this.permissionStorageKey = 'd4ab_worker_permissions';
+    this.permissionMetaStorageKey = 'd4ab_worker_permission_meta';
+    this.telemetryStorageKey = 'd4ab_worker_telemetry';
+    this.telemetryLimit = 300;
+    this.telemetry = [];
+    this.chooserRequests = new Map();
+    this.chooserScopeToRequest = new Map();
+    this.chooserWindowToRequest = new Map();
+    this.chooserTimeoutMs = 180000;
     this.contentRequestTimeoutMs = 28000;
     this.nativeRequestTimeoutMs = 20000;
   }
@@ -30,11 +40,16 @@ class BackgroundServiceWorker {
 
       // Restore permission state after service worker restart.
       await this.loadPermissions();
+      await this.loadPermissionMeta();
+      await this.loadTelemetry();
 
       // Initialize native messaging connection
       await this.initializeNativeMessaging();
 
       this.isInitialized = true;
+      this.recordTelemetry('info', 'worker', 'Background worker initialized', {
+        nativeConnected: !!this.nativePort
+      });
       console.log('D4AB Background Service Worker initialized');
 
     } catch (error) {
@@ -87,6 +102,7 @@ class BackgroundServiceWorker {
 
         this.nativePort = null;
         this.rejectPendingNativeRequests('Native bridge disconnected');
+        this.recordTelemetry('warn', 'native', 'Native messaging disconnected');
       });
 
       // Send initialization message
@@ -98,10 +114,14 @@ class BackgroundServiceWorker {
       });
 
       console.log('Native messaging initialized');
+      this.recordTelemetry('info', 'native', 'Native messaging initialized');
 
     } catch (error) {
       console.error('Failed to initialize native messaging:', error);
       this.nativePort = null;
+      this.recordTelemetry('error', 'native', 'Failed to initialize native messaging', {
+        error: error.message
+      });
     }
   }
 
@@ -129,9 +149,21 @@ class BackgroundServiceWorker {
     // Handle responses to our requests
     if (id && this.pendingNativeRequests && this.pendingNativeRequests.has(id)) {
       const pending = this.pendingNativeRequests.get(id);
+      const requestMeta = this.nativeRequestMeta.get(id);
       this.pendingNativeRequests.delete(id);
+      this.nativeRequestMeta.delete(id);
 
       clearTimeout(pending.timeout);
+
+      if (requestMeta) {
+        this.recordTelemetry(error ? 'error' : 'info', 'native', 'Native request settled', {
+          requestId: id,
+          method: requestMeta.method,
+          durationMs: Date.now() - requestMeta.startedAt,
+          origin: requestMeta.origin,
+          success: !error
+        });
+      }
 
       if (error) {
         pending.reject(new Error(error.message || 'Native bridge error'));
@@ -146,18 +178,25 @@ class BackgroundServiceWorker {
       switch (method) {
         case 'device_connected':
           this.broadcastDeviceEvent('connected', message.params);
+          this.recordTelemetry('info', 'device', 'Device connected', message.params);
+          this.showDeviceNotification('Device connected', message.params);
           break;
 
         case 'device_disconnected':
           this.broadcastDeviceEvent('disconnected', message.params);
+          this.recordTelemetry('warn', 'device', 'Device disconnected', message.params);
+          this.showDeviceNotification('Device disconnected', message.params);
           break;
 
         case 'device_error':
           this.broadcastDeviceEvent('error', message.params);
+          this.recordTelemetry('error', 'device', 'Device error', message.params);
+          this.showDeviceNotification('Device error', message.params);
           break;
 
         case 'ready':
           console.log('Native bridge ready:', message.params);
+          this.recordTelemetry('info', 'native', 'Native bridge ready', message.params);
           break;
       }
     }
@@ -172,6 +211,7 @@ class BackgroundServiceWorker {
       clearTimeout(pending.timeout);
       pending.reject(new Error(reason));
       this.pendingNativeRequests.delete(requestId);
+      this.nativeRequestMeta.delete(requestId);
     }
   }
 
@@ -233,6 +273,12 @@ class BackgroundServiceWorker {
     chrome.tabs.onRemoved.addListener((tabId) => {
       this.cleanupTabConnection(tabId);
     });
+
+    if (chrome.windows && chrome.windows.onRemoved) {
+      chrome.windows.onRemoved.addListener((windowId) => {
+        this.handleChooserWindowClosed(windowId);
+      });
+    }
   }
 
   /**
@@ -242,14 +288,28 @@ class BackgroundServiceWorker {
   getContentRequestTimeoutMs(message) {
     const defaultTimeout = this.contentRequestTimeoutMs;
 
-    if (message?.type !== 'DEVICE_REQUEST' || message?.payload?.method !== 'requestDevice') {
+    const isRequestDevice =
+      message?.type === 'DEVICE_REQUEST' &&
+      message?.payload?.method === 'requestDevice';
+
+    if (isRequestDevice) {
+      return Math.max(defaultTimeout, this.chooserTimeoutMs + 10000);
+    }
+
+    const isBluetoothRequestDevice =
+      message?.type === 'DEVICE_REQUEST' &&
+      message?.payload?.method === 'requestDevice' &&
+      message?.payload?.params?.type === 'bluetooth';
+
+    const isBluetoothUIEnumerate =
+      message?.type === 'UI_ENUMERATE' &&
+      message?.payload?.type === 'bluetooth';
+
+    if (!isBluetoothRequestDevice && !isBluetoothUIEnumerate) {
       return defaultTimeout;
     }
 
-    const params = message.payload?.params || {};
-    if (params.type !== 'bluetooth') {
-      return defaultTimeout;
-    }
+    const params = message.payload?.params || message.payload || {};
 
     const requestedScanDuration = Number(params.scanDuration);
     const scanDuration = Number.isFinite(requestedScanDuration)
@@ -302,6 +362,47 @@ class BackgroundServiceWorker {
           }
           break;
 
+        case 'UI_GET_STATE':
+          sendResponse({ state: this.getUIState() });
+          break;
+
+        case 'UI_GET_LOGS':
+          sendResponse({ logs: this.getTelemetryLogs() });
+          break;
+
+        case 'UI_CLEAR_LOGS':
+          await this.clearTelemetryLogs();
+          sendResponse({ success: true });
+          break;
+
+        case 'UI_PERMISSION_LIST':
+          sendResponse({ permissions: this.listPermissionsSnapshot() });
+          break;
+
+        case 'UI_PERMISSION_REVOKE':
+          await this.handleUIPermissionRevoke(payload, sendResponse);
+          break;
+
+        case 'UI_ENUMERATE':
+          await this.handleUIEnumerate(payload, sender, sendResponse);
+          break;
+
+        case 'UI_SELECT_DEVICE':
+          await this.handleUISelectDevice(payload, sender, sendResponse);
+          break;
+
+        case 'UI_GET_CHOOSER_CONTEXT':
+          await this.handleUIGetChooserContext(payload, sendResponse);
+          break;
+
+        case 'UI_CANCEL_CHOOSER':
+          await this.handleUICancelChooser(payload, sendResponse);
+          break;
+
+        case 'UI_API_CALL':
+          await this.handleUIAPICall(payload, sender, sendResponse);
+          break;
+
         case 'API_CALL':
           await this.handleAPICall(payload, sender, sendResponse);
           break;
@@ -341,34 +442,14 @@ class BackgroundServiceWorker {
 
     try {
       if (method === 'requestDevice') {
-        const enumerateParams = this.buildEnumerateParams(params);
-        let enumerateResult = await this.sendNativeRequest('enumerate', enumerateParams, origin);
-        let selected = this.selectDeviceFromEnumeration(enumerateResult, params);
-
-        // Bluetooth discovery can be bursty; retry once with a broader scan window.
-        const shouldRetryBluetoothScan =
-          params.type === 'bluetooth' && (enumerateParams.scanDuration || 0) < 12000;
-
-        if (!selected && shouldRetryBluetoothScan) {
-          const retryParams = this.buildEnumerateParams({
-            ...params,
-            includeDisconnected: true,
-            scanDuration: Math.max(enumerateParams.scanDuration || 0, 12000)
-          });
-          enumerateResult = await this.sendNativeRequest('enumerate', retryParams, origin);
-          selected = this.selectDeviceFromEnumeration(enumerateResult, params);
-        }
-
-        if (!selected) {
-          const requestedType = params.type || 'matching';
-          const bluetoothHint = requestedType === 'bluetooth'
-            ? ' Ensure the device is powered on and in pairing/advertising mode, then retry.'
-            : '';
-          sendResponse({ error: `No ${requestedType} device found.${bluetoothHint}` });
-          return;
-        }
-
+        const selected = await this.handleChooserDeviceRequest(origin, params, sender);
         this.grantPermission(origin, selected.id, ['read', 'write', 'control']);
+        this.recordTelemetry('info', 'request', 'requestDevice resolved', {
+          origin,
+          type: params.type,
+          deviceId: selected.id,
+          via: 'chooser-ui'
+        });
 
         sendResponse({ device: selected });
         return;
@@ -385,9 +466,486 @@ class BackgroundServiceWorker {
       sendResponse(result);
 
     } catch (error) {
+      const isChooserFlow = method === 'requestDevice';
+      const looksUserAbort = /cancel|timed out/i.test(error.message || '');
+
+      if (isChooserFlow && looksUserAbort) {
+        this.recordTelemetry('warn', 'chooser', 'requestDevice aborted', {
+          method,
+          type: params.type,
+          error: error.message
+        });
+        sendResponse({
+          error: error.message,
+          code: 'REQUEST_ABORTED',
+          method,
+          params
+        });
+        return;
+      }
+
       console.error('D4AB: Native bridge failed:', error.message);
+      this.recordTelemetry('error', 'request', 'Native bridge request failed', {
+        method,
+        type: params.type,
+        error: error.message
+      });
       sendResponse(this.createNativeErrorResponse(error, method, params));
     }
+  }
+
+  async handleChooserDeviceRequest(origin, params = {}, sender = {}) {
+    const scopeKey = this.getChooserScopeKey(origin, params, sender);
+    const existingChooserId = this.chooserScopeToRequest.get(scopeKey);
+    const existingRequest = existingChooserId ? this.chooserRequests.get(existingChooserId) : null;
+
+    if (existingRequest) {
+      this.focusChooserRequest(existingRequest);
+      this.recordTelemetry('info', 'chooser', 'Chooser reused for repeated request', {
+        chooserId: existingRequest.id,
+        scopeKey,
+        origin,
+        type: params.type || 'all'
+      });
+
+      return new Promise((resolve, reject) => {
+        existingRequest.waiters.push({ resolve, reject });
+      });
+    }
+
+    if (existingChooserId && !existingRequest) {
+      this.chooserScopeToRequest.delete(scopeKey);
+    }
+
+    const chooserId = `chooser_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.rejectChooserRequest(chooserId, new Error('Device chooser timed out'));
+      }, this.chooserTimeoutMs);
+
+      this.chooserRequests.set(chooserId, {
+        id: chooserId,
+        origin,
+        params,
+        scopeKey,
+        createdAt: Date.now(),
+        timeout,
+        waiters: [{ resolve, reject }],
+        windowId: null
+      });
+      this.chooserScopeToRequest.set(scopeKey, chooserId);
+
+      this.recordTelemetry('info', 'chooser', 'Chooser opened', {
+        chooserId,
+        scopeKey,
+        origin,
+        type: params.type || 'all'
+      });
+
+      this.openChooserWindow(chooserId, origin, params).catch((error) => {
+        this.rejectChooserRequest(chooserId, error);
+      });
+    });
+  }
+
+  getChooserScopeKey(origin, params = {}, sender = {}) {
+    const tabId = sender?.tab?.id;
+    const scopeTab = Number.isInteger(tabId) ? String(tabId) : 'global';
+    const type = params?.type || 'all';
+    return `${scopeTab}|${origin}|${type}`;
+  }
+
+  focusChooserRequest(request) {
+    if (!request || request.windowId === null || request.windowId === undefined) {
+      return;
+    }
+
+    if (!chrome.windows || typeof chrome.windows.update !== 'function') {
+      return;
+    }
+
+    chrome.windows.update(request.windowId, { focused: true }, () => {
+      void chrome.runtime.lastError;
+    });
+  }
+
+  async openChooserWindow(chooserId, origin, params = {}) {
+    const query = new URLSearchParams({
+      chooserId,
+      type: params.type || 'all',
+      origin
+    });
+
+    if (Array.isArray(params.filters) && params.filters.length > 0) {
+      query.set('filters', JSON.stringify(params.filters));
+    }
+
+    if (params.acceptAllDevices === true) {
+      query.set('acceptAllDevices', '1');
+    }
+
+    if (Array.isArray(params.optionalServices) && params.optionalServices.length > 0) {
+      query.set('optionalServices', JSON.stringify(params.optionalServices));
+    }
+
+    if (params.scanDuration !== undefined) {
+      query.set('scanDuration', String(params.scanDuration));
+    }
+
+    const chooserUrl = chrome.runtime.getURL(`src/ui/device_center.html?${query.toString()}`);
+
+    const request = this.chooserRequests.get(chooserId);
+    if (!request) {
+      throw new Error('Chooser request no longer available');
+    }
+
+    if (chrome.windows && typeof chrome.windows.create === 'function') {
+      const createdWindow = await new Promise((resolve, reject) => {
+        chrome.windows.create({
+          url: chooserUrl,
+          type: 'popup',
+          width: 560,
+          height: 780,
+          focused: true
+        }, (windowInfo) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          resolve(windowInfo);
+        });
+      });
+
+      if (createdWindow && createdWindow.id !== undefined && createdWindow.id !== null) {
+        request.windowId = createdWindow.id;
+        this.chooserWindowToRequest.set(createdWindow.id, chooserId);
+      }
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      chrome.tabs.create({ url: chooserUrl }, (_tab) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+
+  handleChooserWindowClosed(windowId) {
+    const chooserId = this.chooserWindowToRequest.get(windowId);
+    if (!chooserId) {
+      return;
+    }
+
+    this.rejectChooserRequest(chooserId, new Error('User cancelled device selection'));
+  }
+
+  async handleUIGetChooserContext(payload = {}, sendResponse) {
+    const chooserId = payload.chooserId;
+    if (!chooserId) {
+      sendResponse({ error: 'chooserId is required', code: 'INVALID_REQUEST' });
+      return;
+    }
+
+    const request = this.chooserRequests.get(chooserId);
+    if (!request) {
+      sendResponse({ error: 'Chooser request not found', code: 'CHOOSER_NOT_FOUND' });
+      return;
+    }
+
+    sendResponse({
+      chooser: {
+        chooserId: request.id,
+        origin: request.origin,
+        params: request.params,
+        createdAt: new Date(request.createdAt).toISOString(),
+        pending: true
+      }
+    });
+  }
+
+  async handleUICancelChooser(payload = {}, sendResponse) {
+    const chooserId = payload.chooserId;
+    if (!chooserId) {
+      sendResponse({ error: 'chooserId is required', code: 'INVALID_REQUEST' });
+      return;
+    }
+
+    const cancelled = this.rejectChooserRequest(
+      chooserId,
+      new Error(payload.reason || 'User cancelled device selection')
+    );
+
+    sendResponse({ cancelled });
+  }
+
+  resolveChooserRequest(chooserId, device) {
+    const request = this.chooserRequests.get(chooserId);
+    if (!request) {
+      return false;
+    }
+
+    clearTimeout(request.timeout);
+    this.chooserRequests.delete(chooserId);
+    if (request.scopeKey) {
+      this.chooserScopeToRequest.delete(request.scopeKey);
+    }
+    if (request.windowId !== null && request.windowId !== undefined) {
+      this.chooserWindowToRequest.delete(request.windowId);
+      this.closeChooserWindow(request.windowId);
+    }
+
+    for (const waiter of request.waiters || []) {
+      waiter.resolve(device);
+    }
+    this.recordTelemetry('info', 'chooser', 'Chooser request resolved', {
+      chooserId,
+      origin: request.origin,
+      deviceId: device.id,
+      type: device.type
+    });
+    return true;
+  }
+
+  rejectChooserRequest(chooserId, error) {
+    const request = this.chooserRequests.get(chooserId);
+    if (!request) {
+      return false;
+    }
+
+    clearTimeout(request.timeout);
+    this.chooserRequests.delete(chooserId);
+    if (request.scopeKey) {
+      this.chooserScopeToRequest.delete(request.scopeKey);
+    }
+    if (request.windowId !== null && request.windowId !== undefined) {
+      this.chooserWindowToRequest.delete(request.windowId);
+      this.closeChooserWindow(request.windowId);
+    }
+
+    for (const waiter of request.waiters || []) {
+      waiter.reject(error);
+    }
+    this.recordTelemetry('warn', 'chooser', 'Chooser request rejected', {
+      chooserId,
+      origin: request.origin,
+      error: error.message
+    });
+    return true;
+  }
+
+  closeChooserWindow(windowId) {
+    if (!chrome.windows || typeof chrome.windows.remove !== 'function') {
+      return;
+    }
+
+    try {
+      chrome.windows.remove(windowId, () => {
+        void chrome.runtime.lastError;
+      });
+    } catch (error) {
+      void error;
+    }
+  }
+
+  async handleUIEnumerate(payload = {}, sender, sendResponse) {
+    const origin = this.getSenderOrigin(sender);
+    const chooserRequest = payload.chooserId ? this.chooserRequests.get(payload.chooserId) : null;
+    if (payload.chooserId && !chooserRequest) {
+      sendResponse({ error: 'Chooser request is no longer active', code: 'CHOOSER_NOT_FOUND' });
+      return;
+    }
+
+    const type = chooserRequest?.params?.type || payload.type || 'all';
+    const params = this.buildEnumerateParams({
+      type,
+      includeDisconnected: payload.includeDisconnected,
+      scanDuration: payload.scanDuration,
+      hardTimeoutMs: payload.hardTimeoutMs
+    });
+
+    try {
+      const result = await this.sendNativeRequest('enumerate', params, origin);
+      const devices = Array.isArray(result?.devices) ? result.devices : [];
+
+      this.recordTelemetry('info', 'ui', 'UI enumerate completed', {
+        type,
+        count: devices.length
+      });
+
+      sendResponse({
+        devices,
+        metadata: result?.metadata || null
+      });
+    } catch (error) {
+      this.recordTelemetry('error', 'ui', 'UI enumerate failed', {
+        type,
+        error: error.message
+      });
+      sendResponse({
+        error: error.message,
+        code: 'UI_ENUMERATE_FAILED'
+      });
+    }
+  }
+
+  async handleUISelectDevice(payload = {}, sender, sendResponse) {
+    const origin = this.getSenderOrigin(sender);
+    const chooserRequest = payload.chooserId ? this.chooserRequests.get(payload.chooserId) : null;
+    if (payload.chooserId && !chooserRequest) {
+      sendResponse({ error: 'Chooser request is no longer active', code: 'CHOOSER_NOT_FOUND' });
+      return;
+    }
+
+    const targetOrigin = chooserRequest?.origin || payload.targetOrigin;
+    const deviceId = payload.deviceId;
+    const type = chooserRequest?.params?.type || payload.type || 'all';
+    const capabilities = Array.isArray(payload.capabilities) && payload.capabilities.length > 0
+      ? payload.capabilities
+      : ['read', 'write', 'control'];
+
+    if (!deviceId) {
+      sendResponse({ error: 'deviceId is required', code: 'INVALID_REQUEST' });
+      return;
+    }
+
+    try {
+      const result = await this.sendNativeRequest('enumerate', this.buildEnumerateParams({
+        type,
+        includeDisconnected: true,
+        scanDuration: payload.scanDuration,
+        hardTimeoutMs: payload.hardTimeoutMs
+      }), origin);
+
+      const devices = Array.isArray(result?.devices) ? result.devices : [];
+      const selected = devices.find((device) => device.id === deviceId);
+
+      if (!selected) {
+        sendResponse({ error: `Device ${deviceId} not found`, code: 'DEVICE_NOT_FOUND' });
+        return;
+      }
+
+      const filters = Array.isArray(chooserRequest?.params?.filters)
+        ? chooserRequest.params.filters
+        : [];
+      if (filters.length > 0) {
+        const matches = filters.some((filter) => this.matchesDeviceFilter(selected, filter));
+        if (!matches) {
+          sendResponse({
+            error: 'Selected device does not match requested filters',
+            code: 'FILTER_MISMATCH'
+          });
+          return;
+        }
+      }
+
+      this.grantPermission(origin, selected.id, capabilities);
+      if (targetOrigin && targetOrigin !== origin) {
+        this.grantPermission(targetOrigin, selected.id, capabilities);
+      }
+
+      this.recordTelemetry('info', 'ui', 'UI selected device', {
+        origin,
+        targetOrigin,
+        type: selected.type,
+        deviceId: selected.id,
+        chooserId: payload.chooserId || null
+      });
+
+      if (payload.chooserId) {
+        const resolved = this.resolveChooserRequest(payload.chooserId, selected);
+        if (!resolved) {
+          sendResponse({ error: 'Chooser request is no longer active', code: 'CHOOSER_NOT_FOUND' });
+          return;
+        }
+      }
+
+      sendResponse({
+        device: selected,
+        granted: true,
+        fulfilledChooser: !!payload.chooserId
+      });
+    } catch (error) {
+      this.recordTelemetry('error', 'ui', 'UI select device failed', {
+        deviceId,
+        error: error.message
+      });
+      sendResponse({ error: error.message, code: 'UI_SELECT_DEVICE_FAILED' });
+    }
+  }
+
+  async handleUIAPICall(payload = {}, sender, sendResponse) {
+    const origin = this.getSenderOrigin(sender);
+    const method = payload.method;
+    const params = payload.params || {};
+    const deviceId = payload.deviceId;
+
+    if (!method || !deviceId) {
+      sendResponse({
+        error: 'method and deviceId are required',
+        code: 'INVALID_REQUEST'
+      });
+      return;
+    }
+
+    try {
+      const capability = this.getRequiredCapability(method);
+      if (!this.hasPermission(origin, deviceId, capability)) {
+        this.grantPermission(origin, deviceId, ['read', 'write', 'control']);
+      }
+
+      // These calls configure WebUSB client-side state and are no-ops for the native bridge.
+      if (method === 'selectConfiguration' || method === 'claimInterface') {
+        sendResponse({ success: true });
+        return;
+      }
+
+      const normalizedRequest = this.normalizeAPICall(method, params);
+      const nativeParams = { ...normalizedRequest.params, deviceId };
+      const result = await this.sendNativeRequest(normalizedRequest.method, nativeParams, origin);
+
+      this.recordTelemetry('info', 'ui', 'UI API call completed', {
+        method,
+        deviceId
+      });
+
+      sendResponse(this.normalizeAPIResponse(method, result));
+    } catch (error) {
+      this.recordTelemetry('error', 'ui', 'UI API call failed', {
+        method,
+        deviceId,
+        error: error.message
+      });
+      sendResponse(this.createNativeErrorResponse(error, method, { ...params, deviceId }));
+    }
+  }
+
+  async handleUIPermissionRevoke(payload = {}, sendResponse) {
+    const key = payload.key || this.getPermissionKey(payload.origin, payload.deviceId);
+    if (!key) {
+      sendResponse({ error: 'key or origin/deviceId are required', code: 'INVALID_REQUEST' });
+      return;
+    }
+
+    const permissionMeta = this.permissionMeta.get(key);
+    const revoked = this.permissions.delete(key);
+    this.permissionMeta.delete(key);
+    await this.savePermissions();
+    await this.savePermissionMeta();
+
+    if (revoked) {
+      this.recordTelemetry('info', 'permission', 'Permission revoked from UI', {
+        key,
+        origin: permissionMeta?.origin || payload.origin || null,
+        deviceId: permissionMeta?.deviceId || payload.deviceId || null
+      });
+    }
+
+    sendResponse({ revoked });
   }
 
   /**
@@ -474,7 +1032,15 @@ class BackgroundServiceWorker {
       return false;
     }
 
+    if (filter.usbVendorId !== undefined && filter.usbVendorId !== device.vendorId) {
+      return false;
+    }
+
     if (filter.productId !== undefined && filter.productId !== device.productId) {
+      return false;
+    }
+
+    if (filter.usbProductId !== undefined && filter.usbProductId !== device.productId) {
       return false;
     }
 
@@ -492,6 +1058,17 @@ class BackgroundServiceWorker {
 
     if (filter.namePrefix !== undefined) {
       if (typeof device.name !== 'string' || !device.name.startsWith(filter.namePrefix)) {
+        return false;
+      }
+    }
+
+    if (Array.isArray(filter.services) && filter.services.length > 0) {
+      const deviceUuids = Array.isArray(device.uuids) ? device.uuids.map((item) => String(item).toLowerCase()) : [];
+      const hasAllServices = filter.services.every((service) => {
+        return deviceUuids.includes(String(service).toLowerCase());
+      });
+
+      if (!hasAllServices) {
         return false;
       }
     }
@@ -528,12 +1105,25 @@ class BackgroundServiceWorker {
    */
   _sendNativeRequestInternal(method, params, origin, resolve, reject) {
     const requestId = `bg_${++this.nativeMessageId}`;
+    const startedAt = Date.now();
     const timeout = setTimeout(() => {
       this.pendingNativeRequests.delete(requestId);
+      this.nativeRequestMeta.delete(requestId);
+      this.recordTelemetry('error', 'native', 'Native request timeout', {
+        requestId,
+        method,
+        origin,
+        durationMs: Date.now() - startedAt
+      });
       reject(new Error('Native request timeout'));
     }, this.nativeRequestTimeoutMs);
 
     this.pendingNativeRequests.set(requestId, { resolve, reject, timeout });
+    this.nativeRequestMeta.set(requestId, {
+      method,
+      origin,
+      startedAt
+    });
 
     const message = {
       jsonrpc: '2.0',
@@ -547,6 +1137,7 @@ class BackgroundServiceWorker {
     if (!sent) {
       clearTimeout(timeout);
       this.pendingNativeRequests.delete(requestId);
+      this.nativeRequestMeta.delete(requestId);
       reject(new Error('Native bridge unavailable'));
     }
   }
@@ -784,7 +1375,14 @@ class BackgroundServiceWorker {
 
     const key = this.getPermissionKey(origin, deviceId);
     this.permissions.set(key, new Set(capabilities));
+    this.permissionMeta.set(key, { origin, deviceId });
     this.savePermissions();
+    this.savePermissionMeta();
+    this.recordTelemetry('info', 'permission', 'Permission granted', {
+      origin,
+      deviceId,
+      capabilities
+    });
   }
 
   hasPermission(origin, deviceId, capability) {
@@ -813,6 +1411,25 @@ class BackgroundServiceWorker {
     }
   }
 
+  async loadPermissionMeta() {
+    try {
+      const result = await chrome.storage.local.get(this.permissionMetaStorageKey);
+      const serialized = result?.[this.permissionMetaStorageKey] || {};
+
+      this.permissionMeta.clear();
+      for (const [key, value] of Object.entries(serialized)) {
+        if (value && typeof value.origin === 'string' && typeof value.deviceId === 'string') {
+          this.permissionMeta.set(key, {
+            origin: value.origin,
+            deviceId: value.deviceId
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load worker permission metadata:', error.message);
+    }
+  }
+
   async savePermissions() {
     try {
       const serialized = {};
@@ -826,6 +1443,115 @@ class BackgroundServiceWorker {
     } catch (error) {
       console.warn('Failed to persist worker permissions:', error.message);
     }
+  }
+
+  async savePermissionMeta() {
+    try {
+      const serialized = {};
+      for (const [key, value] of this.permissionMeta.entries()) {
+        serialized[key] = value;
+      }
+
+      await chrome.storage.local.set({
+        [this.permissionMetaStorageKey]: serialized
+      });
+    } catch (error) {
+      console.warn('Failed to persist worker permission metadata:', error.message);
+    }
+  }
+
+  listPermissionsSnapshot() {
+    const permissions = [];
+    for (const [key, capabilities] of this.permissions.entries()) {
+      const meta = this.permissionMeta.get(key);
+
+      permissions.push({
+        key,
+        origin: meta?.origin || '(unknown origin)',
+        deviceId: meta?.deviceId || key,
+        capabilities: Array.from(capabilities)
+      });
+    }
+
+    return permissions;
+  }
+
+  getUIState() {
+    return {
+      nativeConnected: !!this.nativePort,
+      connectedTabs: this.connections.size,
+      pendingNativeRequests: this.pendingNativeRequests.size,
+      pendingChoosers: this.chooserRequests.size,
+      permissionCount: this.permissions.size,
+      logCount: this.telemetry.length,
+      lastEvent: this.telemetry.length ? this.telemetry[this.telemetry.length - 1] : null,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  recordTelemetry(level, category, message, details = null) {
+    const entry = {
+      id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: new Date().toISOString(),
+      level,
+      category,
+      message,
+      details: details || null
+    };
+
+    this.telemetry.push(entry);
+    if (this.telemetry.length > this.telemetryLimit) {
+      this.telemetry.splice(0, this.telemetry.length - this.telemetryLimit);
+    }
+
+    this.saveTelemetry();
+  }
+
+  getTelemetryLogs() {
+    return [...this.telemetry].reverse();
+  }
+
+  async clearTelemetryLogs() {
+    this.telemetry = [];
+    await this.saveTelemetry();
+  }
+
+  async loadTelemetry() {
+    try {
+      const result = await chrome.storage.local.get(this.telemetryStorageKey);
+      const entries = result?.[this.telemetryStorageKey];
+      if (Array.isArray(entries)) {
+        this.telemetry = entries.slice(-this.telemetryLimit);
+      }
+    } catch (error) {
+      console.warn('Failed to load worker telemetry:', error.message);
+    }
+  }
+
+  async saveTelemetry() {
+    try {
+      await chrome.storage.local.set({
+        [this.telemetryStorageKey]: this.telemetry
+      });
+    } catch (error) {
+      console.warn('Failed to persist worker telemetry:', error.message);
+    }
+  }
+
+  showDeviceNotification(title, deviceData = {}) {
+    if (!chrome.notifications || typeof chrome.notifications.create !== 'function') {
+      return;
+    }
+
+    const label = deviceData.name || deviceData.productName || deviceData.id || 'Unknown device';
+    const message = `${label} (${deviceData.type || 'hardware'})`;
+
+    chrome.notifications.create(`d4ab_${Date.now()}`, {
+      type: 'basic',
+      iconUrl: 'icons/icon-48.png',
+      title,
+      message
+    });
   }
 }
 

@@ -3,7 +3,6 @@
   "name": "D4AB Hardware Bridge",
   "version": "1.0.0",
   "description": "Enables Web USB, Serial, and Bluetooth APIs in all browsers through native bridge",
-
   "permissions": [
     "nativeMessaging",
     "storage",
@@ -11,25 +10,25 @@
     "scripting",
     "notifications"
   ],
-
   "optional_permissions": [
     "tabs",
     "webNavigation"
   ],
-
   "background": {
     "service_worker": "src/background/service_worker.js"
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/polyfill_bridge.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/polyfill_bridge.js"
+      ],
       "run_at": "document_start",
       "all_frames": true
     }
   ],
-
   "web_accessible_resources": [
     {
       "resources": [
@@ -37,18 +36,17 @@
         "src/services/*",
         "src/models/*"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
-
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self';"
   },
-
   "host_permissions": [
     "<all_urls>"
   ],
-
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_title": "D4AB Hardware Bridge",
@@ -57,16 +55,17 @@
       "32": "icons/icon-32.png"
     }
   },
-
+  "options_ui": {
+    "page": "src/ui/device_center.html",
+    "open_in_tab": true
+  },
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-
   "minimum_chrome_version": "88",
-
   "commands": {
     "toggle_bridge": {
       "suggested_key": {

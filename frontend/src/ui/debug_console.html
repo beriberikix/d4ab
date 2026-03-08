@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>D4AB Debug Console</title>
+  <link rel="stylesheet" href="hardware_ui.css">
+</head>
+
+<body>
+  <main class="page">
+    <section class="hero">
+      <h1>Debug Console</h1>
+      <p>Bridge diagnostics, permission inspection, and extension-side hardware event logs.</p>
+    </section>
+
+    <section class="grid split">
+      <section class="grid">
+        <section class="card" style="padding: 12px;">
+          <div class="toolbar">
+            <span id="nativeStatus" class="badge">Bridge: checking...</span>
+            <span id="tabStatus" class="badge">Tabs: 0</span>
+            <span id="pendingStatus" class="badge">In-flight: 0</span>
+            <span class="spacer"></span>
+            <button id="refreshStateButton" class="btn alt">Refresh</button>
+          </div>
+          <p id="stateTimestamp" class="small" style="margin: 6px 0 0;"></p>
+        </section>
+
+        <section class="card" style="padding: 12px;">
+          <div class="toolbar">
+            <h2>Telemetry</h2>
+            <span class="spacer"></span>
+            <button id="clearLogsButton" class="btn warn">Clear Logs</button>
+            <button id="downloadLogsButton" class="btn alt">Export JSON</button>
+          </div>
+          <div id="logContainer" class="log-pane"></div>
+        </section>
+      </section>
+
+      <section class="card" style="padding: 12px;">
+        <div class="toolbar">
+          <h2>Permission Grants</h2>
+          <span class="spacer"></span>
+          <button id="refreshPermissionsButton" class="btn alt">Refresh</button>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Origin</th>
+              <th>Device</th>
+              <th>Capabilities</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="permissionTableBody"></tbody>
+        </table>
+      </section>
+    </section>
+
+    <section class="footer-links">
+      <a class="link" href="device_center.html" target="_blank" rel="noopener noreferrer">Open Device Center</a>
+      <a class="link" href="https://developer.chrome.com/docs/capabilities/usb" target="_blank" rel="noopener noreferrer">WebUSB docs</a>
+      <a class="link" href="https://developer.chrome.com/docs/capabilities/serial" target="_blank" rel="noopener noreferrer">Web Serial docs</a>
+      <a class="link" href="https://developer.chrome.com/docs/capabilities/bluetooth" target="_blank" rel="noopener noreferrer">Web Bluetooth docs</a>
+    </section>
+  </main>
+
+  <script src="debug_console.js" defer></script>
+</body>
+
+</html>

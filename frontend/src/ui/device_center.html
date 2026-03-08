@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>D4AB Device Center</title>
+  <link rel="stylesheet" href="hardware_ui.css">
+</head>
+
+<body>
+  <main class="page">
+    <section class="hero">
+      <h1>Device Center</h1>
+      <p>Unified chooser and control surface for WebUSB, Web Serial, and Web Bluetooth.</p>
+    </section>
+
+    <section id="chooserPanel" class="card" style="padding: 12px; margin-bottom: 12px; display: none;">
+      <h2>Device Request Chooser</h2>
+      <p id="chooserContext" class="small" style="margin: 8px 0 0;">Waiting for chooser context...</p>
+      <div class="toolbar" style="margin-top: 10px;">
+        <span id="chooserStatus" class="badge warn">Awaiting selection</span>
+        <span class="spacer"></span>
+        <button id="cancelChooserButton" class="btn warn">Cancel Request</button>
+      </div>
+    </section>
+
+    <section class="card" style="padding: 12px; margin-bottom: 12px;">
+      <div class="toolbar">
+        <span id="chooserBadge" class="badge warn" style="display: none;">Chooser mode</span>
+        <span id="nativeStatus" class="badge">Bridge: checking...</span>
+        <span id="permissionCount" class="badge">Permissions: 0</span>
+        <span id="requestCount" class="badge">In-flight: 0</span>
+        <span class="spacer"></span>
+        <button id="refreshStateButton" class="btn alt">Refresh State</button>
+        <button id="openDiagnosticsButton" class="btn warn">Open Diagnostics</button>
+      </div>
+    </section>
+
+    <section class="grid split">
+      <section class="card" style="padding: 12px;">
+        <div class="toolbar">
+          <label class="small" for="typeSelect">Device type</label>
+          <select id="typeSelect" class="select" style="max-width: 160px;">
+            <option value="usb">USB</option>
+            <option value="serial">Serial</option>
+            <option value="bluetooth">Bluetooth</option>
+            <option value="all">All</option>
+          </select>
+          <label class="small" for="scanDurationInput">Scan ms</label>
+          <input id="scanDurationInput" class="input" type="number" min="3000" max="20000" step="1000" value="10000" style="max-width: 115px;">
+          <label class="small" style="display: inline-flex; gap: 6px; align-items: center;">
+            <input id="includeDisconnectedInput" type="checkbox">
+            include disconnected
+          </label>
+          <span class="spacer"></span>
+          <button id="scanButton" class="btn">Scan</button>
+        </div>
+        <div id="deviceList" class="device-list"></div>
+      </section>
+
+      <section class="grid">
+        <section id="selectedDeviceCard" class="card" style="padding: 12px;">
+          <h2>Selected Device</h2>
+          <p id="selectedDeviceName" style="margin: 8px 0 4px;">No device selected</p>
+          <p id="selectedDeviceMeta" class="small" style="margin: 0 0 10px;"></p>
+          <div class="toolbar">
+            <button id="grantButton" class="btn">Grant Access</button>
+            <button id="connectButton" class="btn alt">Connect</button>
+            <button id="disconnectButton" class="btn alt">Disconnect</button>
+          </div>
+        </section>
+
+        <section id="quickCommandCard" class="card" style="padding: 12px;">
+          <h2>Quick Command</h2>
+          <p class="small" style="margin: 8px 0;">Sends UTF-8 text bytes using a native <code>write</code> call.</p>
+          <textarea id="writePayloadInput" class="textarea" placeholder="Example: ping"></textarea>
+          <div class="toolbar">
+            <button id="writeButton" class="btn">Write</button>
+            <button id="readButton" class="btn alt">Read 64 bytes</button>
+          </div>
+          <pre id="commandResult" class="small" style="margin: 8px 0 0; white-space: pre-wrap;"></pre>
+        </section>
+
+        <section id="activityCard" class="card" style="padding: 12px;">
+          <h2>Activity</h2>
+          <div id="activityLog" class="log-pane"></div>
+        </section>
+      </section>
+    </section>
+
+    <section class="footer-links">
+      <a class="link" href="debug_console.html" target="_blank" rel="noopener noreferrer">Open Debug Console</a>
+      <a class="link" href="../../test/test_page.html" target="_blank" rel="noopener noreferrer">Open Test Harness</a>
+    </section>
+  </main>
+
+  <script src="device_center.js" defer></script>
+</body>
+
+</html>

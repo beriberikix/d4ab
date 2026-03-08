@@ -1,0 +1,289 @@
+/* Native-inspired extension UI for the D4AB hardware bridge pages. */
+:root {
+  --bg: #f4f6fb;
+  --panel: #ffffff;
+  --ink: #162033;
+  --muted: #5e6879;
+  --line: #d6dcea;
+  --accent: #0c6c61;
+  --accent-2: #f26419;
+  --ok: #1f8b4c;
+  --warn: #b86900;
+  --err: #be2d2d;
+  --shadow: 0 16px 36px rgba(16, 34, 61, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(70rem 50rem at 8% -15%, #d2f2eb 0%, rgba(210, 242, 235, 0) 60%),
+    radial-gradient(70rem 50rem at 92% -12%, #ffe5d6 0%, rgba(255, 229, 214, 0) 58%),
+    var(--bg);
+  font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 18px 30px;
+}
+
+.hero {
+  background: linear-gradient(120deg, #0a4d45, #116f63);
+  color: #f8fffd;
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+  margin-bottom: 14px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0.01em;
+}
+
+.hero p {
+  margin: 6px 0 0;
+  opacity: 0.92;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.toolbar .spacer {
+  flex: 1;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(20, 38, 66, 0.08);
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.grid {
+  display: grid;
+  gap: 12px;
+}
+
+.grid.split {
+  grid-template-columns: 1.2fr 1fr;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 7px 12px;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn.alt {
+  background: #fff;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.btn.warn {
+  background: var(--accent-2);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #eef2fb;
+  color: #2d3b54;
+}
+
+.badge.ok {
+  background: #dff7e8;
+  color: #145f32;
+}
+
+.badge.warn {
+  background: #fff1db;
+  color: #8d5700;
+}
+
+.badge.err {
+  background: #ffe4e4;
+  color: #9b1f1f;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 10px;
+  font-size: 13px;
+  vertical-align: top;
+}
+
+.table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.device-list {
+  display: grid;
+  gap: 10px;
+  max-height: 460px;
+  overflow: auto;
+  padding: 10px;
+}
+
+.device-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+}
+
+.device-card.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.device-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.device-title {
+  margin: 0;
+  font-size: 14px;
+}
+
+.device-meta {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.device-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.log-pane {
+  max-height: 390px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfcff;
+  padding: 8px;
+}
+
+.log-item {
+  border-bottom: 1px dashed #d8deeb;
+  padding: 8px 6px;
+}
+
+.log-item:last-child {
+  border-bottom: 0;
+}
+
+.log-item pre {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.footer-links {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.link {
+  color: #15518f;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .grid.split {
+    grid-template-columns: 1fr;
+  }
+
+  .page {
+    padding: 12px;
+  }
+
+  .hero h1 {
+    font-size: 20px;
+  }
+}
