@@ -1,0 +1,53 @@
+{
+  "name": "d4ab-hardware-bridge",
+  "version": "1.0.0",
+  "description": "Native hardware bridge for D4AB browser extension",
+  "main": "src/bridge_cli.js",
+  "bin": {
+    "d4ab-bridge": "src/bridge_cli.js"
+  },
+  "scripts": {
+    "start": "node src/bridge_cli.js",
+    "dev": "nodemon src/bridge_cli.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/",
+    "format": "prettier --write src/",
+    "build": "pkg . --out-path dist/",
+    "install:macos": "node scripts/install_macos.js",
+    "install:windows": "node scripts/install_windows.js",
+    "install:linux": "node scripts/install_linux.js"
+  },
+  "keywords": ["hardware", "native-messaging", "usb", "serial", "bluetooth"],
+  "author": "D4AB Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.1",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0",
+    "pkg": "^5.8.1"
+  },
+  "dependencies": {
+    "usb": "^2.11.0",
+    "@serialport/bindings-cpp": "^12.0.1",
+    "serialport": "^12.0.0",
+    "@abandonware/noble": "^1.9.2-15",
+    "uuid": "^9.0.1",
+    "yargs": "^17.7.2"
+  },
+  "pkg": {
+    "scripts": "src/**/*.js",
+    "assets": [],
+    "targets": [
+      "node18-macos-x64",
+      "node18-win-x64",
+      "node18-linux-x64"
+    ],
+    "outputPath": "dist"
+  }
+}

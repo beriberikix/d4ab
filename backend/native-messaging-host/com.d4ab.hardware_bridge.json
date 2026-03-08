@@ -1,0 +1,10 @@
+{
+  "name": "com.d4ab.hardware_bridge",
+  "description": "D4AB Hardware Bridge Native Messaging Host",
+  "path": "INSTALL_DIR/d4ab_bridge",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://EXTENSION_ID/",
+    "moz-extension://EXTENSION_ID/"
+  ]
+}

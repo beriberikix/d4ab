@@ -1,0 +1,35 @@
+{
+  "name": "d4ab-hardware-bridge-extension",
+  "version": "1.0.0",
+  "description": "Browser extension providing Web USB, Serial, and Bluetooth API polyfills",
+  "main": "src/background/service_worker.js",
+  "scripts": {
+    "build": "web-ext build",
+    "start:firefox": "web-ext run --target firefox-desktop",
+    "start:chromium": "web-ext run --target chromium",
+    "lint": "node build-browser.js firefox && web-ext lint -s build/firefox && eslint src/",
+    "test": "jest --config jest.config.js",
+    "test:watch": "jest --config jest.config.js --watch"
+  },
+  "keywords": [
+    "hardware",
+    "usb",
+    "serial",
+    "bluetooth",
+    "web-api",
+    "polyfill"
+  ],
+  "author": "D4AB Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chrome": "^0.0.246",
+    "eslint": "^8.50.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.0.0",
+    "web-ext": "^7.8.0"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1"
+  }
+}
