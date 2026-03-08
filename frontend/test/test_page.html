@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D4AB Hardware Bridge Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+        }
+
+        .api-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .api-section h2 {
+            color: #007acc;
+            margin-top: 0;
+        }
+
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .status.available {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.unavailable {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .test-button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 10px 5px 0;
+        }
+
+        .test-button:hover {
+            background: #005a9e;
+        }
+
+        .test-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #007acc;
+        }
+
+        .results pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+
+        .device-list {
+            margin-top: 15px;
+        }
+
+        .device-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .device-item h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .device-detail {
+            color: #666;
+            font-size: 13px;
+            margin: 3px 0;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌉 D4AB Hardware Bridge Test Page</h1>
+        <p>This page tests the D4AB Hardware Bridge extension functionality across all supported device APIs.</p>
+
+        <!-- WebUSB Section -->
+        <div class="api-section">
+            <h2>🔌 WebUSB API</h2>
+            <div id="usb-status" class="status unavailable">Checking...</div>
+            <button id="usb-enumerate" class="test-button" disabled>Get Devices</button>
+            <button id="usb-request" class="test-button" disabled>Request Device</button>
+            <button id="usb-connect" class="test-button" disabled>Connect to Device</button>
+
+            <div id="usb-results" class="results" style="display: none;">
+                <h4>USB Devices:</h4>
+                <div id="usb-devices" class="device-list"></div>
+            </div>
+        </div>
+
+        <!-- WebSerial Section -->
+        <div class="api-section">
+            <h2>📡 Web Serial API</h2>
+            <div id="serial-status" class="status unavailable">Checking...</div>
+            <button id="serial-enumerate" class="test-button" disabled>Get Ports</button>
+            <button id="serial-request" class="test-button" disabled>Request Port</button>
+            <button id="serial-connect" class="test-button" disabled>Connect to Port</button>
+
+            <div id="serial-results" class="results" style="display: none;">
+                <h4>Serial Ports:</h4>
+                <div id="serial-ports" class="device-list"></div>
+            </div>
+        </div>
+
+        <!-- Web Bluetooth Section -->
+        <div class="api-section">
+            <h2>📶 Web Bluetooth API</h2>
+            <div id="bluetooth-status" class="status unavailable">Checking...</div>
+            <button id="bluetooth-scan" class="test-button" disabled>Scan Devices</button>
+            <button id="bluetooth-request" class="test-button" disabled>Request Device</button>
+
+            <div id="bluetooth-results" class="results" style="display: none;">
+                <h4>Bluetooth Devices:</h4>
+                <div id="bluetooth-devices" class="device-list"></div>
+            </div>
+        </div>
+
+        <!-- System Information -->
+        <div class="api-section">
+            <h2>ℹ️ System Information</h2>
+            <div class="results">
+                <div class="device-detail">User Agent: <span id="user-agent"></span></div>
+                <div class="device-detail">Extension ID: <span id="extension-id"></span></div>
+                <div class="device-detail">D4AB Injected: <span id="d4ab-injected"></span></div>
+                <div class="device-detail">APIs Available: <span id="apis-available"></span></div>
+            </div>
+        </div>
+
+        <!-- Debug Console -->
+        <div class="api-section">
+            <h2>🐛 Debug Console</h2>
+            <div class="results">
+                <pre id="debug-output">Initializing...</pre>
+            </div>
+            <button id="clear-debug" class="test-button">Clear</button>
+        </div>
+
+        <div class="footer">
+            <p>🔧 <strong>Troubleshooting:</strong> If APIs show as unavailable, ensure the D4AB extension is installed and the native bridge is running.</p>
+            <p>📚 <strong>Documentation:</strong> <a href="../README.md">README.md</a> | 🐛 <strong>Issues:</strong> <a href="https://github.com/d4ab/hardware-bridge/issues">GitHub</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Debug logging
+        const debugOutput = document.getElementById('debug-output');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            debugOutput.textContent += logMessage + '\n';
+            debugOutput.scrollTop = debugOutput.scrollHeight;
+        }
+
+        function clearDebug() {
+            debugOutput.textContent = '';
+        }
+
+        // System Information
+        function updateSystemInfo() {
+            document.getElementById('user-agent').textContent = navigator.userAgent;
+            document.getElementById('d4ab-injected').textContent = window.d4abInjected ? 'Yes' : 'No';
+
+            const apis = [];
+            if (navigator.usb) apis.push('USB');
+            if (navigator.serial) apis.push('Serial');
+            if (navigator.bluetooth) apis.push('Bluetooth');
+
+            document.getElementById('apis-available').textContent = apis.length ? apis.join(', ') : 'None';
+        }
+
+        // API Status Checking
+        function checkAPIStatus() {
+            // USB
+            const usbStatus = document.getElementById('usb-status');
+            const usbButtons = document.querySelectorAll('#usb-enumerate, #usb-request, #usb-connect');
+
+            if (navigator.usb) {
+                usbStatus.textContent = 'Available';
+                usbStatus.className = 'status available';
+                usbButtons.forEach(btn => btn.disabled = false);
+                log('WebUSB API available');
+            } else {
+                usbStatus.textContent = 'Not Available';
+                usbStatus.className = 'status unavailable';
+                log('WebUSB API not available');
+            }
+
+            // Serial
+            const serialStatus = document.getElementById('serial-status');
+            const serialButtons = document.querySelectorAll('#serial-enumerate, #serial-request, #serial-connect');
+
+            if (navigator.serial) {
+                serialStatus.textContent = 'Available';
+                serialStatus.className = 'status available';
+                serialButtons.forEach(btn => btn.disabled = false);
+                log('Web Serial API available');
+            } else {
+                serialStatus.textContent = 'Not Available';
+                serialStatus.className = 'status unavailable';
+                log('Web Serial API not available');
+            }
+
+            // Bluetooth
+            const bluetoothStatus = document.getElementById('bluetooth-status');
+            const bluetoothButtons = document.querySelectorAll('#bluetooth-scan, #bluetooth-request');
+
+            if (navigator.bluetooth) {
+                bluetoothStatus.textContent = 'Available';
+                bluetoothStatus.className = 'status available';
+                bluetoothButtons.forEach(btn => btn.disabled = false);
+                log('Web Bluetooth API available');
+            } else {
+                bluetoothStatus.textContent = 'Not Available';
+                bluetoothStatus.className = 'status unavailable';
+                log('Web Bluetooth API not available');
+            }
+        }
+
+        // Device Display Helper
+        function displayDevices(containerId, devices, type) {
+            const container = document.getElementById(containerId);
+            const resultsDiv = document.getElementById(containerId.replace('-devices', '-results').replace('-ports', '-results'));
+
+            container.innerHTML = '';
+
+            if (devices.length === 0) {
+                container.innerHTML = '<div class="device-item"><p>No devices found</p></div>';
+            } else {
+                devices.forEach((device, index) => {
+                    const deviceDiv = document.createElement('div');
+                    deviceDiv.className = 'device-item';
+
+                    let content = `<h4>Device ${index + 1}</h4>`;
+
+                    if (type === 'usb') {
+                        content += `
+                            <div class="device-detail">ID: ${device.id || 'N/A'}</div>
+                            <div class="device-detail">Vendor ID: 0x${(device.vendorId || 0).toString(16).padStart(4, '0')}</div>
+                            <div class="device-detail">Product ID: 0x${(device.productId || 0).toString(16).padStart(4, '0')}</div>
+                            <div class="device-detail">Product Name: ${device.productName || 'Unknown'}</div>
+                            <div class="device-detail">Manufacturer: ${device.manufacturerName || 'Unknown'}</div>
+                            <div class="device-detail">Serial Number: ${device.serialNumber || 'N/A'}</div>
+                        `;
+                    } else if (type === 'serial') {
+                        content += `
+                            <div class="device-detail">ID: ${device.id || 'N/A'}</div>
+                            <div class="device-detail">Path: ${device.name || device.path || 'N/A'}</div>
+                            <div class="device-detail">Display Name: ${device.displayName || 'N/A'}</div>
+                            <div class="device-detail">Vendor ID: ${device.vendorId ? '0x' + device.vendorId.toString(16) : 'N/A'}</div>
+                            <div class="device-detail">Product ID: ${device.productId ? '0x' + device.productId.toString(16) : 'N/A'}</div>
+                        `;
+                    } else if (type === 'bluetooth') {
+                        content += `
+                            <div class="device-detail">ID: ${device.id || 'N/A'}</div>
+                            <div class="device-detail">Name: ${device.name || 'Unknown'}</div>
+                            <div class="device-detail">Address: ${device.address || 'N/A'}</div>
+                        `;
+                    }
+
+                    deviceDiv.innerHTML = content;
+                    container.appendChild(deviceDiv);
+                });
+            }
+
+            resultsDiv.style.display = 'block';
+        }
+
+        // USB Functions
+        async function enumerateUSBDevices() {
+            log('Enumerating USB devices...');
+            try {
+                const devices = await navigator.usb.getDevices();
+                log(`Found ${devices.length} USB devices`);
+                displayDevices('usb-devices', devices, 'usb');
+            } catch (error) {
+                log(`USB enumeration error: ${error.message}`, 'error');
+            }
+        }
+
+        async function requestUSBDevice() {
+            log('Requesting USB device...');
+            try {
+                const device = await navigator.usb.requestDevice({ filters: [] });
+                log(`USB device selected: ${device.productName || 'Unknown'}`);
+                displayDevices('usb-devices', [device], 'usb');
+            } catch (error) {
+                log(`USB request error: ${error.message}`, 'error');
+            }
+        }
+
+        async function connectUSBDevice() {
+            log('Testing USB device connection...');
+            try {
+                const devices = await navigator.usb.getDevices();
+                if (devices.length === 0) {
+                    log('No USB devices available for connection test');
+                    return;
+                }
+
+                const device = devices[0];
+                await device.open();
+                log(`Connected to USB device: ${device.productName}`);
+
+                // Test basic operations
+                await device.selectConfiguration(1);
+                log('Configuration selected');
+
+                await device.claimInterface(0);
+                log('Interface claimed');
+
+                await device.close();
+                log('USB device disconnected');
+            } catch (error) {
+                log(`USB connection error: ${error.message}`, 'error');
+            }
+        }
+
+        // Serial Functions
+        async function enumerateSerialPorts() {
+            log('Enumerating serial ports...');
+            try {
+                const ports = await navigator.serial.getPorts();
+                log(`Found ${ports.length} serial ports`);
+                displayDevices('serial-ports', ports, 'serial');
+            } catch (error) {
+                log(`Serial enumeration error: ${error.message}`, 'error');
+            }
+        }
+
+        async function requestSerialPort() {
+            log('Requesting serial port...');
+            try {
+                const port = await navigator.serial.requestPort();
+                log(`Serial port selected: ${port.name || 'Unknown'}`);
+                displayDevices('serial-ports', [port], 'serial');
+            } catch (error) {
+                log(`Serial request error: ${error.message}`, 'error');
+            }
+        }
+
+        async function connectSerialPort() {
+            log('Testing serial port connection...');
+            try {
+                const ports = await navigator.serial.getPorts();
+                if (ports.length === 0) {
+                    log('No serial ports available for connection test');
+                    return;
+                }
+
+                const port = ports[0];
+                await port.open({ baudRate: 9600 });
+                log(`Connected to serial port: ${port.name}`);
+
+                await port.close();
+                log('Serial port disconnected');
+            } catch (error) {
+                log(`Serial connection error: ${error.message}`, 'error');
+            }
+        }
+
+        // Bluetooth Functions
+        async function scanBluetoothDevices() {
+            log('Scanning for Bluetooth devices...');
+            try {
+                if (!navigator.bluetooth || typeof navigator.bluetooth.getDevices !== 'function') {
+                    log('Bluetooth getDevices is not available in this environment', 'error');
+                    return;
+                }
+
+                const devices = await navigator.bluetooth.getDevices({ scanDuration: 12000 });
+                log(`Found ${devices.length} Bluetooth devices`);
+                displayDevices('bluetooth-devices', devices, 'bluetooth');
+            } catch (error) {
+                log(`Bluetooth scan error: ${error.message}`, 'error');
+            }
+        }
+
+        async function requestBluetoothDevice() {
+            log('Requesting Bluetooth device...');
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    scanDuration: 15000
+                });
+                log(`Bluetooth device selected: ${device.name || 'Unknown'}`);
+                displayDevices('bluetooth-devices', [device], 'bluetooth');
+            } catch (error) {
+                log(`Bluetooth request error: ${error.message}`, 'error');
+                log('Hint: ensure the device is in pairing/advertising mode and Bluetooth is enabled.', 'error');
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('usb-enumerate').addEventListener('click', enumerateUSBDevices);
+        document.getElementById('usb-request').addEventListener('click', requestUSBDevice);
+        document.getElementById('usb-connect').addEventListener('click', connectUSBDevice);
+
+        document.getElementById('serial-enumerate').addEventListener('click', enumerateSerialPorts);
+        document.getElementById('serial-request').addEventListener('click', requestSerialPort);
+        document.getElementById('serial-connect').addEventListener('click', connectSerialPort);
+
+        document.getElementById('bluetooth-scan').addEventListener('click', scanBluetoothDevices);
+        document.getElementById('bluetooth-request').addEventListener('click', requestBluetoothDevice);
+
+        document.getElementById('clear-debug').addEventListener('click', clearDebug);
+
+        // Initialize page
+        window.addEventListener('load', () => {
+            log('D4AB Test Page loaded');
+            updateSystemInfo();
+
+            // Wait a moment for extension to inject, then check APIs
+            setTimeout(() => {
+                checkAPIStatus();
+                log('Initial API status check complete');
+            }, 1000);
+        });
+
+        // Listen for extension events
+        window.addEventListener('d4ab-device-event', (event) => {
+            log(`Device event: ${event.detail.event} - ${JSON.stringify(event.detail.data)}`);
+        });
+    </script>
+</body>
+</html>

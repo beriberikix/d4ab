@@ -1,0 +1,10 @@
+{
+  "name": "com.d4ab.hardware_bridge",
+  "description": "D4AB Test Native Messaging Host",
+  "path": "/Users/jberi/Applications/D4AB/test-host.sh",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://*/",
+    "moz-extension://*/"
+  ]
+}
