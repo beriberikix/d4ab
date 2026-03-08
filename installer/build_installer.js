@@ -9,6 +9,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { execSync, spawn } = require('child_process');
 const os = require('os');
+const BrewBuilder = require('./build_brew');
 
 class InstallerBuilder {
   constructor() {
@@ -17,6 +18,7 @@ class InstallerBuilder {
     this.projectRoot = path.resolve(__dirname, '..');
     this.buildDir = path.join(this.projectRoot, 'dist');
     this.version = this.getVersion();
+    this.target = null;
 
     this.config = {
       name: 'D4AB Hardware Bridge',
@@ -46,6 +48,20 @@ class InstallerBuilder {
    * Main build process
    */
   async build() {
+    if (this.target === 'brew') {
+      console.log('Building Homebrew package artifacts...');
+
+      try {
+        await this.buildBrewPackage();
+        console.log('✅ Homebrew package build completed successfully!');
+      } catch (error) {
+        console.error('❌ Installer build failed:', error.message);
+        process.exit(1);
+      }
+
+      return;
+    }
+
     console.log(`Building installer for ${this.platform}-${this.arch}...`);
 
     try {
@@ -73,6 +89,19 @@ class InstallerBuilder {
       console.error('❌ Installer build failed:', error.message);
       process.exit(1);
     }
+  }
+
+  /**
+   * Builds Homebrew formula and local source artifacts.
+   */
+  async buildBrewPackage() {
+    const brewBuilder = new BrewBuilder({
+      projectRoot: this.projectRoot,
+      buildDir: this.buildDir,
+      version: this.version
+    });
+
+    await brewBuilder.build();
   }
 
   /**
@@ -813,6 +842,7 @@ Usage: node build_installer.js [options]
 
 Options:
   --help, -h          Show this help message
+  --target <name>     Build target (default: native, brew)
   --platform <name>   Target platform (win32, darwin, linux)
   --arch <name>       Target architecture (x64, arm64)
   --output <path>     Output directory for installer
@@ -820,10 +850,13 @@ Options:
 
 Examples:
   node build_installer.js
+  node build_installer.js --target brew
   node build_installer.js --platform linux --arch x64
   node build_installer.js --output ./custom-build
       `);
       process.exit(0);
+    } else if (arg === '--target') {
+      options.target = args[++i];
     } else if (arg === '--platform') {
       options.platform = args[++i];
     } else if (arg === '--arch') {
@@ -838,6 +871,7 @@ Examples:
   const builder = new InstallerBuilder();
 
   // Override options if provided
+  if (options.target) builder.target = options.target;
   if (options.platform) builder.platform = options.platform;
   if (options.arch) builder.arch = options.arch;
   if (options.output) builder.buildDir = options.output;

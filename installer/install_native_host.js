@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const readline = require('readline');
 const { execSync } = require('child_process');
 
 class NativeHostInstaller {
@@ -37,6 +38,20 @@ class NativeHostInstaller {
         options.firefoxExtensionId = arg.split('=')[1];
       } else if (arg === '--allow-placeholder-ids') {
         options.allowPlaceholderIds = true;
+      } else if (arg === '--browsers' && args[i + 1]) {
+        options.browsers = args[i + 1]
+          .split(',')
+          .map(browser => browser.trim().toLowerCase())
+          .filter(Boolean);
+        i++;
+      } else if (arg.startsWith('--browsers=')) {
+        options.browsers = arg
+          .split('=')[1]
+          .split(',')
+          .map(browser => browser.trim().toLowerCase())
+          .filter(Boolean);
+      } else if (arg === '--non-interactive') {
+        options.nonInteractive = true;
       }
     }
 
@@ -101,6 +116,8 @@ class NativeHostInstaller {
     console.log('Installing D4AB Native Messaging Host...');
 
     try {
+      const selectedBrowsers = await this.resolveBrowserTargets();
+
       // Create installation directory
       await this.createInstallDir();
 
@@ -111,11 +128,15 @@ class NativeHostInstaller {
       await this.installDependencies();
 
       // Register native messaging host
-      await this.registerHost();
+      await this.registerHost(selectedBrowsers);
 
       console.log('✅ Installation complete!');
       console.log(`📁 Installed to: ${this.installDir}`);
-      console.log('🔌 Native messaging host registered');
+      if (selectedBrowsers.length > 0) {
+        console.log(`🔌 Native messaging host registered for: ${selectedBrowsers.join(', ')}`);
+      } else {
+        console.log('⚠️  Native messaging host was not registered for any browser.');
+      }
 
       // Print next steps
       this.printNextSteps();
@@ -223,19 +244,204 @@ exec "$NODE_BIN" "$SCRIPT_DIR/src/bridge_cli.js" "$@" 2>>"$LOG_DIR/firefox_launc
   /**
    * Registers the native messaging host
    */
-  async registerHost() {
+  async registerHost(selectedBrowsers = ['chrome', 'firefox']) {
+    return this.registerHostForBrowsers(selectedBrowsers);
+  }
+
+  /**
+   * Registers the native messaging host for the selected browsers.
+   */
+  async registerHostForBrowsers(selectedBrowsers = []) {
     console.log('🔌 Registering native messaging host...');
 
-    if (this.platform === 'win32') {
-      await this.registerHostWindows('chrome');
-      await this.registerHostWindows('firefox');
-    } else {
-      // Register for both Chrome and Firefox
-      await this.registerHostUnix('chrome');
-      await this.registerHostUnix('firefox');
+    if (!Array.isArray(selectedBrowsers) || selectedBrowsers.length === 0) {
+      console.log('⚠️  No browser target selected. Skipping host registration.');
+      return;
     }
 
-    console.log('✅ Native messaging host registered for Chrome and Firefox');
+    if (this.platform === 'win32') {
+      for (const browser of selectedBrowsers) {
+        await this.registerHostWindows(browser);
+      }
+    } else {
+      for (const browser of selectedBrowsers) {
+        await this.registerHostUnix(browser);
+      }
+    }
+
+    console.log(`✅ Native messaging host registered for: ${selectedBrowsers.join(', ')}`);
+  }
+
+  /**
+   * Determines which installed browsers should receive native host registration.
+   */
+  async resolveBrowserTargets() {
+    const supportedBrowsers = ['firefox', 'chrome'];
+    const detected = this.detectInstalledBrowsers();
+
+    this.printDetectedBrowsers(detected);
+
+    if (Array.isArray(this.cliOptions.browsers)) {
+      const selectedFromCli = this.cliOptions.browsers.filter(browser => supportedBrowsers.includes(browser));
+      const unknown = this.cliOptions.browsers.filter(browser => !supportedBrowsers.includes(browser));
+
+      if (unknown.length > 0) {
+        console.warn(`⚠️  Ignoring unsupported browser targets: ${unknown.join(', ')}`);
+      }
+
+      if (selectedFromCli.length === 0) {
+        return [];
+      }
+
+      const unavailable = selectedFromCli.filter(browser => !detected[browser]);
+      if (unavailable.length > 0) {
+        console.warn(`⚠️  Selected browsers are not detected as installed: ${unavailable.join(', ')}`);
+      }
+
+      return selectedFromCli;
+    }
+
+    if (!this.cliOptions.nonInteractive && process.stdin.isTTY) {
+      return this.promptBrowserSelection(detected);
+    }
+
+    // Default policy: prioritize Firefox; keep Chrome disabled unless explicitly selected.
+    if (detected.firefox) {
+      console.log('ℹ️  Defaulting to Firefox registration. Chrome remains disabled by default.');
+      return ['firefox'];
+    }
+
+    if (detected.chrome) {
+      console.log('ℹ️  Chrome detected but disabled by default. Re-run with --browsers chrome to enable it.');
+    }
+
+    return [];
+  }
+
+  /**
+   * Detects installed browsers across supported platforms.
+   */
+  detectInstalledBrowsers() {
+    const detected = {
+      firefox: false,
+      chrome: false,
+      safari: false
+    };
+
+    if (this.platform === 'darwin') {
+      detected.firefox = this.anyPathExists([
+        '/Applications/Firefox.app',
+        path.join(os.homedir(), 'Applications', 'Firefox.app')
+      ]) || this.commandExists('firefox');
+
+      detected.chrome = this.anyPathExists([
+        '/Applications/Google Chrome.app',
+        path.join(os.homedir(), 'Applications', 'Google Chrome.app')
+      ]) || this.commandExists('google-chrome');
+
+      detected.safari = this.anyPathExists(['/Applications/Safari.app']);
+      return detected;
+    }
+
+    if (this.platform === 'linux') {
+      detected.firefox = this.commandExists('firefox');
+      detected.chrome = this.commandExists('google-chrome') || this.commandExists('chromium') || this.commandExists('chromium-browser');
+      return detected;
+    }
+
+    if (this.platform === 'win32') {
+      detected.firefox = this.anyPathExists([
+        'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
+        'C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe'
+      ]);
+      detected.chrome = this.anyPathExists([
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+      ]);
+    }
+
+    return detected;
+  }
+
+  /**
+   * Prompt for browser selection with conservative defaults.
+   */
+  async promptBrowserSelection(detected) {
+    const selected = [];
+
+    if (!detected.firefox && !detected.chrome) {
+      console.log('⚠️  No supported browsers detected for automatic registration.');
+      return selected;
+    }
+
+    if (detected.safari) {
+      console.log('ℹ️  Safari detected. Native host registration for Safari is not implemented yet.');
+    }
+
+    const includeFirefox = detected.firefox
+      ? await this.promptYesNo('Register Firefox native host? [Y/n] ', true)
+      : false;
+
+    if (includeFirefox) {
+      selected.push('firefox');
+    }
+
+    const includeChrome = detected.chrome
+      ? await this.promptYesNo('Register Chrome native host? [y/N] ', false)
+      : false;
+
+    if (includeChrome) {
+      selected.push('chrome');
+    }
+
+    return selected;
+  }
+
+  /**
+   * Prints browser availability to help users decide installation targets.
+   */
+  printDetectedBrowsers(detected) {
+    const availability = browser => detected[browser] ? 'found' : 'not found';
+    console.log('🔎 Browser detection:');
+    console.log(`   • Firefox: ${availability('firefox')} (recommended)`);
+    console.log(`   • Chrome: ${availability('chrome')} (disabled by default)`);
+
+    if (this.platform === 'darwin') {
+      console.log(`   • Safari: ${availability('safari')} (informational only for now)`);
+    }
+  }
+
+  commandExists(command) {
+    try {
+      execSync(`command -v ${command}`, { stdio: 'pipe' });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  anyPathExists(paths) {
+    return paths.some(candidatePath => fs.existsSync(candidatePath));
+  }
+
+  promptYesNo(question, defaultAnswer) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    return new Promise(resolve => {
+      rl.question(question, answer => {
+        rl.close();
+        const normalized = (answer || '').trim().toLowerCase();
+        if (!normalized) {
+          resolve(defaultAnswer);
+          return;
+        }
+
+        resolve(normalized === 'y' || normalized === 'yes');
+      });
+    });
   }
 
   /**
@@ -456,6 +662,10 @@ if (require.main === module) {
       installer.install();
       break;
 
+    case 'list-browsers':
+      installer.printDetectedBrowsers(installer.detectInstalledBrowsers());
+      break;
+
     case 'uninstall':
       installer.uninstall();
       break;
@@ -466,6 +676,11 @@ if (require.main === module) {
       console.log('Usage:');
       console.log('  node install_native_host.js install     - Install the native messaging host');
       console.log('  node install_native_host.js uninstall   - Uninstall the native messaging host');
+      console.log('  node install_native_host.js list-browsers - Show detected browsers');
+      console.log('');
+      console.log('Install options:');
+      console.log('  --browsers firefox,chrome   Explicit browser targets');
+      console.log('  --non-interactive           Skip prompts and apply defaults');
       console.log('');
   }
 }

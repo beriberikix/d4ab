@@ -216,8 +216,43 @@ node build_installer.js
 # Build for specific platform
 node build_installer.js --platform linux --arch x64
 
+# Build local Homebrew artifacts (macOS/Linux)
+node build_installer.js --target brew
+
 # Build for all platforms
 npm run build:all
+```
+
+### Local Homebrew Install (macOS First)
+
+```bash
+# 1) Generate local tarball + formula
+node installer/build_installer.js --target brew
+
+# 2) Add a local tap and copy formula into it (required by recent Homebrew)
+brew tap-new d4ab/local --no-git
+mkdir -p "$(brew --repo d4ab/local)/Formula"
+cp ./dist/homebrew/Formula/d4ab-hardware-bridge.rb "$(brew --repo d4ab/local)/Formula/d4ab-hardware-bridge.rb"
+
+# 3) Install with Homebrew (Node.js is required automatically via formula dependency)
+brew install --build-from-source d4ab/local/d4ab-hardware-bridge
+
+# 4) Register native messaging host (interactive picker)
+d4ab-install-native-host install
+
+# Non-interactive default behavior:
+# - Firefox selected by default if detected
+# - Chrome detected but disabled by default
+d4ab-install-native-host install --non-interactive
+
+# Explicitly enable both Firefox and Chrome
+d4ab-install-native-host install --browsers firefox,chrome
+```
+
+One-command local smoke test on macOS:
+
+```bash
+bash installer/smoke_macos_brew.sh
 ```
 
 The installer creates platform-specific packages:
