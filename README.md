@@ -259,6 +259,10 @@ One-command local smoke test on Linux:
 
 ```bash
 bash installer/smoke_linux_brew.sh
+
+# Also verify Chromium-family manifest paths by enabling Chrome registration
+# (recommended to pass your real extension ID)
+bash installer/smoke_linux_brew.sh --with-chrome --chrome-extension-id <your_chrome_extension_id>
 ```
 
 The installer creates platform-specific packages:
