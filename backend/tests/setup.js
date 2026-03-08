@@ -6,7 +6,27 @@ process.env.NODE_ENV = 'test';
 // Mock hardware libraries by default - individual tests can override
 jest.mock('usb');
 jest.mock('@serialport/bindings-cpp');
-jest.mock('@abandonware/noble');
+jest.mock('@abandonware/noble', () => {
+  const { EventEmitter } = require('events');
+  const nobleMock = new EventEmitter();
+
+  // Keep tests deterministic and avoid native BLE adapter access in CI.
+  nobleMock.state = 'poweredOn';
+  nobleMock.startScanning = (services, allowDuplicates, callback) => {
+    nobleMock.emit('scanStart');
+    if (typeof callback === 'function') {
+      callback(null);
+    }
+  };
+  nobleMock.stopScanning = (callback) => {
+    nobleMock.emit('scanStop');
+    if (typeof callback === 'function') {
+      callback();
+    }
+  };
+
+  return nobleMock;
+});
 
 // Global test timeout for hardware operations
 jest.setTimeout(30000);
