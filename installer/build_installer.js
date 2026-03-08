@@ -1027,7 +1027,7 @@ echo "You can now use 'd4ab-bridge' command from any terminal."
       return null;
     }
 
-    return `node18-${platform}-${arch}`;
+    return `node20-${platform}-${arch}`;
   }
 
   async getNpmInstallCommand(dir, options = {}) {
