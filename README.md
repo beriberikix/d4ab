@@ -245,6 +245,12 @@ d4ab-install-native-host install
 # - Chrome detected but disabled by default
 d4ab-install-native-host install --non-interactive
 
+# Keep stale host manifests cleaned up when browser selection changes (default)
+d4ab-install-native-host install --cleanup-stale-manifests
+
+# Open browser extension setup pages after install (off by default in non-interactive mode)
+d4ab-install-native-host install --open-guidance
+
 # Explicitly enable both Firefox and Chrome
 d4ab-install-native-host install --browsers firefox,chrome
 ```
@@ -289,6 +295,15 @@ powershell -ExecutionPolicy Bypass -File .\installer\smoke_windows_inno.ps1
 # Include Chrome registry/manifest validation
 powershell -ExecutionPolicy Bypass -File .\installer\smoke_windows_inno.ps1 -WithChrome -ChromeExtensionId <your_chrome_extension_id>
 ```
+
+Cross-platform local matrix runner (runs current-host smoke, reports others as skipped):
+
+```bash
+node installer/run_local_matrix.js
+node installer/run_local_matrix.js --with-chrome --chrome-extension-id <your_chrome_extension_id>
+```
+
+See `installer/README.md` for the installer behavior contract and per-OS registration details.
 
 The installer creates platform-specific packages:
 - **Windows**: `.exe` installer and `.zip` package

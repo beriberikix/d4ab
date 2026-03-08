@@ -52,6 +52,14 @@ class NativeHostInstaller {
           .filter(Boolean);
       } else if (arg === '--non-interactive') {
         options.nonInteractive = true;
+      } else if (arg === '--open-guidance') {
+        options.openGuidance = true;
+      } else if (arg === '--no-open-guidance') {
+        options.openGuidance = false;
+      } else if (arg === '--cleanup-stale-manifests') {
+        options.cleanupStaleManifests = true;
+      } else if (arg === '--no-cleanup-stale-manifests') {
+        options.cleanupStaleManifests = false;
       }
     }
 
@@ -183,6 +191,11 @@ class NativeHostInstaller {
       // Register native messaging host
       await this.registerHost(selectedBrowsers);
 
+      // Remove stale manifests/registry entries when browser selection changes.
+      if (this.shouldCleanupStaleManifests()) {
+        await this.cleanupStaleHostRegistrations(selectedBrowsers);
+      }
+
       console.log('✅ Installation complete!');
       console.log(`📁 Installed to: ${this.installDir}`);
       if (selectedBrowsers.length > 0) {
@@ -192,7 +205,12 @@ class NativeHostInstaller {
       }
 
       // Print next steps
-      this.printNextSteps();
+      this.printNextSteps(selectedBrowsers);
+
+      // Best-effort browser guidance pages for local extension loading.
+      if (this.shouldOpenGuidancePages()) {
+        this.openBrowserGuidancePages(selectedBrowsers);
+      }
 
     } catch (error) {
       console.error('❌ Installation failed:', error.message);
@@ -531,6 +549,71 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
     });
   }
 
+  shouldOpenGuidancePages() {
+    if (typeof this.cliOptions.openGuidance === 'boolean') {
+      return this.cliOptions.openGuidance;
+    }
+
+    // Keep non-interactive installs automation-friendly by default.
+    return !this.cliOptions.nonInteractive;
+  }
+
+  shouldCleanupStaleManifests() {
+    if (typeof this.cliOptions.cleanupStaleManifests === 'boolean') {
+      return this.cliOptions.cleanupStaleManifests;
+    }
+
+    return true;
+  }
+
+  openBrowserGuidancePages(selectedBrowsers = []) {
+    const urls = [];
+
+    if (selectedBrowsers.includes('firefox')) {
+      urls.push('about:debugging#/runtime/this-firefox');
+    }
+
+    if (selectedBrowsers.includes('chrome')) {
+      urls.push('chrome://extensions');
+    }
+
+    if (urls.length === 0) {
+      return;
+    }
+
+    console.log('🧭 Opening local extension setup guidance pages...');
+    for (const url of urls) {
+      if (this.openUrl(url)) {
+        console.log(`✅ Opened: ${url}`);
+      } else {
+        console.log(`⚠️  Could not open automatically: ${url}`);
+      }
+    }
+  }
+
+  openUrl(url) {
+    try {
+      if (this.platform === 'darwin') {
+        execSync(`open "${url}"`, { stdio: 'pipe' });
+        return true;
+      }
+
+      if (this.platform === 'linux') {
+        execSync(`xdg-open "${url}"`, { stdio: 'pipe' });
+        return true;
+      }
+
+      if (this.platform === 'win32') {
+        execSync(`cmd /c start "" "${url}"`, { stdio: 'pipe' });
+        return true;
+      }
+    } catch (error) {
+      return false;
+    }
+
+    return false;
+  }
+
   /**
    * Creates the native messaging host manifest
    */
@@ -628,6 +711,48 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
   }
 
   /**
+   * Removes stale host registration for browsers that were not selected.
+   */
+  async cleanupStaleHostRegistrations(selectedBrowsers = []) {
+    const supportedBrowsers = ['firefox', 'chrome'];
+    const staleBrowsers = supportedBrowsers.filter(browser => !selectedBrowsers.includes(browser));
+
+    if (staleBrowsers.length === 0) {
+      return;
+    }
+
+    console.log(`🧹 Cleaning stale host registrations for: ${staleBrowsers.join(', ')}`);
+
+    if (this.platform === 'win32') {
+      for (const browser of staleBrowsers) {
+        const baseKey = browser === 'firefox'
+          ? 'HKEY_CURRENT_USER\\Software\\Mozilla\\NativeMessagingHosts'
+          : 'HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts';
+        const regKey = `${baseKey}\\com.d4ab.hardware_bridge`;
+
+        try {
+          execSync(`reg delete "${regKey}" /f`, { stdio: 'pipe' });
+          console.log(`✅ Removed stale registry key: ${regKey}`);
+        } catch (error) {
+          // Ignore when key does not exist.
+        }
+      }
+
+      return;
+    }
+
+    for (const browser of staleBrowsers) {
+      for (const hostDir of this.getHostRegistryPaths(browser)) {
+        const manifestPath = path.join(hostDir, 'com.d4ab.hardware_bridge.json');
+        if (fs.existsSync(manifestPath)) {
+          fs.unlinkSync(manifestPath);
+          console.log(`✅ Removed stale host manifest: ${manifestPath}`);
+        }
+      }
+    }
+  }
+
+  /**
    * Registers native messaging host on Windows
    */
   async registerHostWindows(browser = 'chrome') {
@@ -682,11 +807,18 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
   /**
    * Prints next steps for the user
    */
-  printNextSteps() {
+  printNextSteps(selectedBrowsers = []) {
     console.log('\n🚀 Next Steps:');
-    console.log('1. Load the browser extension in Chrome/Firefox');
+    console.log('1. Load the browser extension in the browsers you selected');
     console.log('2. The extension will automatically connect to the native bridge');
     console.log('3. Visit a WebUSB/WebSerial enabled website to test');
+
+    if (selectedBrowsers.includes('firefox')) {
+      console.log('   • Firefox extension loader: about:debugging#/runtime/this-firefox');
+    }
+    if (selectedBrowsers.includes('chrome')) {
+      console.log('   • Chrome extension loader: chrome://extensions');
+    }
     console.log('\n🔍 Troubleshooting:');
     console.log(`   • Check logs in: ${path.join(this.installDir, 'logs')}`);
     console.log('   • Ensure your browser allows the extension');
@@ -782,6 +914,10 @@ if (require.main === module) {
       console.log('Install options:');
       console.log('  --browsers firefox,chrome   Explicit browser targets');
       console.log('  --non-interactive           Skip prompts and apply defaults');
+      console.log('  --open-guidance             Open browser extension setup pages after install');
+      console.log('  --no-open-guidance          Disable automatic browser guidance page opening');
+      console.log('  --cleanup-stale-manifests   Remove stale browser host manifests (default)');
+      console.log('  --no-cleanup-stale-manifests Keep stale browser host manifests');
       console.log('');
   }
 }
