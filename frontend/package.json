@@ -9,6 +9,7 @@
     "start:chromium": "web-ext run --target chromium",
     "lint": "node build-browser.js firefox && web-ext lint -s build/firefox && eslint src/",
     "test": "jest --config jest.config.js",
+    "test:ci": "jest --config jest.config.js tests/unit tests/contract tests/security",
     "test:watch": "jest --config jest.config.js --watch"
   },
   "keywords": [

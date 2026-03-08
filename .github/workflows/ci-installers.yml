@@ -1,0 +1,67 @@
+name: CI Installers
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-platform-installers:
+    name: Build Platform Installer (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Build installer for host platform
+        run: node installer/build_installer.js
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: dist/**
+          if-no-files-found: error
+
+  build-brew-artifacts:
+    name: Build Homebrew Artifacts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Build Homebrew artifacts
+        run: node installer/build_installer.js --target brew
+
+      - name: Upload Homebrew artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-${{ matrix.os }}
+          path: |
+            dist/homebrew/**
+          if-no-files-found: error

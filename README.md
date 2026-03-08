@@ -315,21 +315,22 @@ The installer creates platform-specific packages:
 ### Run Test Suites
 
 ```bash
-# Backend unit tests
-cd backend
-npm test
+# Backend tests (all configured suites)
+cd backend && npm test
 
-# Frontend E2E tests
-cd frontend
-npm install playwright
-npm run test:e2e
+# Frontend tests (all configured suites)
+cd frontend && npm test
 
-# Security audit tests
-npm run test:security
-
-# Cross-browser compatibility tests
-npm run test:browsers
+# CI-safe subset used by GitHub Actions tests workflow
+npm --prefix backend run test:ci
+npm --prefix frontend run test:ci
 ```
+
+The CI-safe subset intentionally excludes browser/hardware-heavy suites (`frontend/tests/integration`, `frontend/tests/e2e`, and `frontend/tests/performance`) in the first CI phase.
+
+GitHub Actions workflows currently included:
+- `.github/workflows/ci-tests.yml`: runs the CI-safe test subset on Node 18.x and 20.x for pull requests and pushes to `main`.
+- `.github/workflows/ci-installers.yml`: builds installer artifacts on Linux/macOS/Windows, plus Homebrew artifacts on Linux/macOS, and uploads them as workflow artifacts (no marketplace publishing yet).
 
 ### Test with Real Hardware
 
