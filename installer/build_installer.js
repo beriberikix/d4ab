@@ -182,6 +182,8 @@ class InstallerBuilder {
 
     const filesToCopy = [
       'manifest.json',
+      'manifest-chrome.json',
+      'manifest-firefox.json',
       'src',
       'icons',
       'popup.html'
@@ -210,6 +212,36 @@ class InstallerBuilder {
   async buildWindowsInstaller() {
     console.log('🪟 Building Windows installer...');
 
+    // Copy native host installer script into build payload.
+    const installerToolsDir = path.join(this.platformDir, 'installer');
+    await this.ensureDirectory(installerToolsDir);
+    await this.copyFile(
+      path.join(this.projectRoot, 'installer', 'install_native_host.js'),
+      path.join(installerToolsDir, 'install_native_host.js')
+    );
+
+    // Create Inno Setup installer script.
+    const innoScript = await this.generateInnoSetupScript();
+    const innoPath = path.join(this.platformDir, 'installer.iss');
+    await fs.writeFile(innoPath, innoScript);
+
+    // Try to build Inno installer if compiler is available.
+    let innoCompiled = false;
+    const innoCompilers = ['iscc', 'ISCC.exe'];
+    for (const compiler of innoCompilers) {
+      try {
+        this.execCommand(`${compiler} "${innoPath}"`, this.platformDir);
+        console.log('✅ Inno Setup installer created');
+        innoCompiled = true;
+        break;
+      } catch (error) {
+        // Try next compiler alias.
+      }
+    }
+    if (!innoCompiled) {
+      console.warn('⚠️  Inno Setup compiler not available, generated installer.iss scaffold only');
+    }
+
     // Create NSIS installer script
     const nsisScript = await this.generateNSISScript();
     const scriptPath = path.join(this.platformDir, 'installer.nsi');
@@ -235,6 +267,144 @@ class InstallerBuilder {
 
     // Create ZIP package
     await this.createZipPackage('windows');
+  }
+
+  /**
+   * Generates Inno Setup script for Windows installer packaging.
+   */
+  async generateInnoSetupScript() {
+    return `
+#define MyAppName "${this.config.name}"
+#define MyAppVersion "${this.version}"
+#define MyAppPublisher "${this.config.author}"
+#define MyAppURL "${this.config.homepage}"
+
+[Setup]
+AppId=${this.config.identifier}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+DefaultDirName={localappdata}\\D4AB
+DisableProgramGroupPage=yes
+PrivilegesRequired=lowest
+OutputDir=.
+OutputBaseFilename=d4ab-bridge-{#MyAppVersion}-windows-inno
+Compression=lzma
+SolidCompression=yes
+ArchitecturesInstallIn64BitMode=x64compatible
+WizardStyle=modern
+UninstallDisplayName={#MyAppName}
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "install_node"; Description: "Install Node.js LTS via winget if missing"; Flags: unchecked; Check: NeedsNodeInstall
+Name: "register_firefox"; Description: "Register native host for Firefox (recommended)"; Flags: checked; Check: IsFirefoxInstalled
+Name: "register_chrome"; Description: "Register native host for Chrome (disabled by default)"; Flags: unchecked; Check: IsChromeInstalled
+
+[Files]
+Source: "backend\\*"; DestDir: "{app}\\backend"; Flags: recursesubdirs createallsubdirs
+Source: "frontend\\*"; DestDir: "{app}\\frontend"; Flags: recursesubdirs createallsubdirs
+Source: "installer\\install_native_host.js"; DestDir: "{app}\\installer"; Flags: ignoreversion
+
+[Run]
+Filename: "{cmd}"; Parameters: "/C winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements --silent"; Flags: runhidden waituntilterminated; Tasks: install_node; Check: IsWingetAvailable
+Filename: "{cmd}"; Parameters: "/C npm install --production"; WorkingDir: "{app}\\backend"; Flags: runhidden waituntilterminated
+Filename: "{code:GetNodeExecutable}"; Parameters: "\"{app}\\installer\\install_native_host.js\" install --non-interactive --browsers firefox"; Flags: runhidden waituntilterminated; Check: ShouldInstallFirefoxOnly
+Filename: "{code:GetNodeExecutable}"; Parameters: "\"{app}\\installer\\install_native_host.js\" install --non-interactive --browsers chrome --allow-placeholder-ids"; Flags: runhidden waituntilterminated; Check: ShouldInstallChromeOnly
+Filename: "{code:GetNodeExecutable}"; Parameters: "\"{app}\\installer\\install_native_host.js\" install --non-interactive --browsers firefox,chrome --allow-placeholder-ids"; Flags: runhidden waituntilterminated; Check: ShouldInstallFirefoxAndChrome
+
+[UninstallRun]
+Filename: "{code:GetNodeExecutable}"; Parameters: "\"{app}\\installer\\install_native_host.js\" uninstall"; Flags: runhidden waituntilterminated skipifdoesntexist
+
+[Code]
+function IsNodeInstalled: Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := Exec(ExpandConstant('{cmd}'), '/C node --version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
+function IsWingetAvailable: Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := Exec(ExpandConstant('{cmd}'), '/C winget --version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
+function NeedsNodeInstall: Boolean;
+begin
+  Result := not IsNodeInstalled();
+end;
+
+function IsFirefoxInstalled: Boolean;
+begin
+  Result :=
+    FileExists(ExpandConstant('{pf}\\Mozilla Firefox\\firefox.exe')) or
+    FileExists(ExpandConstant('{pf32}\\Mozilla Firefox\\firefox.exe'));
+end;
+
+function IsChromeInstalled: Boolean;
+begin
+  Result :=
+    FileExists(ExpandConstant('{pf}\\Google\\Chrome\\Application\\chrome.exe')) or
+    FileExists(ExpandConstant('{pf32}\\Google\\Chrome\\Application\\chrome.exe'));
+end;
+
+function GetNodeExecutable(Value: string): string;
+begin
+  if FileExists(ExpandConstant('{pf}\\nodejs\\node.exe')) then
+  begin
+    Result := ExpandConstant('{pf}\\nodejs\\node.exe');
+  end
+  else if FileExists(ExpandConstant('{pf32}\\nodejs\\node.exe')) then
+  begin
+    Result := ExpandConstant('{pf32}\\nodejs\\node.exe');
+  end
+  else
+  begin
+    Result := 'node';
+  end;
+end;
+
+function ShouldInstallFirefoxOnly: Boolean;
+begin
+  Result := WizardIsTaskSelected('register_firefox') and (not WizardIsTaskSelected('register_chrome'));
+end;
+
+function ShouldInstallChromeOnly: Boolean;
+begin
+  Result := (not WizardIsTaskSelected('register_firefox')) and WizardIsTaskSelected('register_chrome');
+end;
+
+function ShouldInstallFirefoxAndChrome: Boolean;
+begin
+  Result := WizardIsTaskSelected('register_firefox') and WizardIsTaskSelected('register_chrome');
+end;
+
+function InitializeSetup: Boolean;
+begin
+  if IsNodeInstalled() then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  if IsWingetAvailable() then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  MsgBox('Node.js is required and winget was not found for automatic installation.'#13#10#13#10 +
+         'Install Node.js LTS from https://nodejs.org and run the installer again.', mbCriticalError, MB_OK);
+  Result := False;
+end;
+`;
   }
 
   /**

@@ -243,7 +243,11 @@ class NativeHostInstaller {
 
     // Create a robust Firefox launcher so native host startup works even when
     // browser environment PATH does not include Node.js.
-    this.createFirefoxLauncherScript();
+    if (this.platform === 'win32') {
+      this.createWindowsLauncherScript();
+    } else {
+      this.createFirefoxLauncherScript();
+    }
 
     console.log('✅ Binary installed');
   }
@@ -277,6 +281,36 @@ exec "$NODE_BIN" "$SCRIPT_DIR/src/bridge_cli.js" "$@" 2>>"$LOG_DIR/firefox_launc
 `;
 
     fs.writeFileSync(launcherPath, script, { mode: 0o755 });
+  }
+
+  /**
+   * Creates Windows launcher script with explicit Node resolution.
+   */
+  createWindowsLauncherScript() {
+    const launcherPath = path.join(this.installDir, 'd4ab-bridge.cmd');
+    const script = `@echo off
+setlocal
+
+set "SCRIPT_DIR=%~dp0"
+set "LOG_DIR=%SCRIPT_DIR%logs"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+
+set "NODE_BIN="
+for %%I in (node.exe) do set "NODE_BIN=%%~$PATH:I"
+
+if not defined NODE_BIN if exist "%ProgramFiles%\\nodejs\\node.exe" set "NODE_BIN=%ProgramFiles%\\nodejs\\node.exe"
+if not defined NODE_BIN if exist "%ProgramFiles(x86)%\\nodejs\\node.exe" set "NODE_BIN=%ProgramFiles(x86)%\\nodejs\\node.exe"
+
+if not defined NODE_BIN (
+  echo %DATE% %TIME%: node executable not found>>"%LOG_DIR%\\windows_launch.log"
+  exit /b 1
+)
+
+echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows_launch.log"
+"%NODE_BIN%" "%SCRIPT_DIR%src\\bridge_cli.js" %* 1>>"%LOG_DIR%\\windows_launch.log" 2>&1
+`;
+
+    fs.writeFileSync(launcherPath, script);
   }
 
   /**
@@ -501,9 +535,16 @@ exec "$NODE_BIN" "$SCRIPT_DIR/src/bridge_cli.js" "$@" 2>>"$LOG_DIR/firefox_launc
    * Creates the native messaging host manifest
    */
   createHostManifest(browser) {
-    const binaryPath = browser === 'firefox'
-      ? path.join(this.installDir, 'd4ab-bridge.sh')
-      : path.join(this.installDir, 'src', 'bridge_cli.js');
+    let binaryPath;
+
+    if (this.platform === 'win32') {
+      binaryPath = path.join(this.installDir, 'd4ab-bridge.cmd');
+    } else if (browser === 'firefox') {
+      binaryPath = path.join(this.installDir, 'd4ab-bridge.sh');
+    } else {
+      binaryPath = path.join(this.installDir, 'src', 'bridge_cli.js');
+    }
+
     const manifest = {
       name: 'com.d4ab.hardware_bridge',
       description: 'D4AB Hardware Bridge Native Messaging Host',

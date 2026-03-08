@@ -265,6 +265,31 @@ bash installer/smoke_linux_brew.sh
 bash installer/smoke_linux_brew.sh --with-chrome --chrome-extension-id <your_chrome_extension_id>
 ```
 
+### Local Inno Setup Install (Windows)
+
+```powershell
+# 1) Generate Windows installer payload and Inno script scaffold
+node installer/build_installer.js --platform win32 --arch x64
+
+# 2) Compile with Inno Setup (if ISCC.exe is installed)
+ISCC.exe .\dist\win32-x64\installer.iss
+
+# 3) Run native host install directly for local validation
+node .\installer\install_native_host.js install --non-interactive --browsers firefox
+
+# Optional: include Chrome registration (pass real extension ID when available)
+node .\installer\install_native_host.js install --non-interactive --browsers firefox,chrome --allow-placeholder-ids
+```
+
+One-command local smoke test on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\installer\smoke_windows_inno.ps1
+
+# Include Chrome registry/manifest validation
+powershell -ExecutionPolicy Bypass -File .\installer\smoke_windows_inno.ps1 -WithChrome -ChromeExtensionId <your_chrome_extension_id>
+```
+
 The installer creates platform-specific packages:
 - **Windows**: `.exe` installer and `.zip` package
 - **macOS**: `.dmg` disk image and `.app` bundle
