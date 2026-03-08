@@ -132,7 +132,7 @@ class InstallerBuilder {
     const backendDir = path.join(this.projectRoot, 'backend');
 
     // Install dependencies
-    this.execCommand('npm install', backendDir);
+    this.execCommand(await this.getNpmInstallCommand(backendDir), backendDir);
 
     // Run tests
     try {
@@ -141,8 +141,18 @@ class InstallerBuilder {
       console.warn('⚠️  Backend tests failed, continuing with build...');
     }
 
-    // Build application
-    this.execCommand('npm run build || npm run compile || echo "No build script found"', backendDir);
+    // Build backend binary for the current host target to avoid cross-target pkg overhead in matrix builds.
+    const hostPkgTarget = this.resolvePkgTarget();
+    if (hostPkgTarget) {
+      try {
+        this.execCommand(`npx pkg . --targets ${hostPkgTarget} --out-path dist/ --no-bytecode`, backendDir);
+      } catch (error) {
+        console.warn(`⚠️  Host-target pkg build failed (${hostPkgTarget}), falling back to package scripts...`);
+        this.execCommand('npm run build || npm run compile || echo "No build script found"', backendDir);
+      }
+    } else {
+      this.execCommand('npm run build || npm run compile || echo "No build script found"', backendDir);
+    }
 
     // Copy backend files
     const backendBuildDir = path.join(this.platformDir, 'backend');
@@ -158,8 +168,19 @@ class InstallerBuilder {
       path.join(backendBuildDir, 'package.json')
     );
 
+    const backendLockPath = path.join(backendDir, 'package-lock.json');
+    try {
+      await fs.access(backendLockPath);
+      await this.copyFile(
+        backendLockPath,
+        path.join(backendBuildDir, 'package-lock.json')
+      );
+    } catch (error) {
+      // Lockfile is optional for local developer snapshots.
+    }
+
     // Install production dependencies
-    this.execCommand('npm install --production', backendBuildDir);
+    this.execCommand(await this.getNpmInstallCommand(backendBuildDir, { omitDev: true }), backendBuildDir);
   }
 
   /**
@@ -171,7 +192,7 @@ class InstallerBuilder {
     const frontendDir = path.join(this.projectRoot, 'frontend');
 
     // Install dependencies
-    this.execCommand('npm install', frontendDir);
+    this.execCommand(await this.getNpmInstallCommand(frontendDir), frontendDir);
 
     // Build extension
     this.execCommand('npm run build || npm run compile || echo "No build script found"', frontendDir);
@@ -985,6 +1006,48 @@ echo "You can now use 'd4ab-bridge' command from any terminal."
         await this.copyFile(srcPath, destPath);
       }
     }
+  }
+
+  resolvePkgTarget() {
+    const platformMap = {
+      darwin: 'macos',
+      linux: 'linux',
+      win32: 'win'
+    };
+
+    const archMap = {
+      x64: 'x64',
+      arm64: 'arm64'
+    };
+
+    const platform = platformMap[this.platform];
+    const arch = archMap[this.arch];
+
+    if (!platform || !arch) {
+      return null;
+    }
+
+    return `node18-${platform}-${arch}`;
+  }
+
+  async getNpmInstallCommand(dir, options = {}) {
+    const { omitDev = false } = options;
+    const lockPath = path.join(dir, 'package-lock.json');
+    let hasLockFile = false;
+
+    try {
+      await fs.access(lockPath);
+      hasLockFile = true;
+    } catch (error) {
+      hasLockFile = false;
+    }
+
+    const command = [hasLockFile ? 'npm ci' : 'npm install', '--no-audit', '--no-fund'];
+    if (omitDev) {
+      command.push('--omit=dev');
+    }
+
+    return command.join(' ');
   }
 
   execCommand(command, cwd = process.cwd()) {
