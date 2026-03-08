@@ -223,7 +223,7 @@ node build_installer.js --target brew
 npm run build:all
 ```
 
-### Local Homebrew Install (macOS First)
+### Local Homebrew Install (macOS and Linux)
 
 ```bash
 # 1) Generate local tarball + formula
@@ -253,6 +253,12 @@ One-command local smoke test on macOS:
 
 ```bash
 bash installer/smoke_macos_brew.sh
+```
+
+One-command local smoke test on Linux:
+
+```bash
+bash installer/smoke_linux_brew.sh
 ```
 
 The installer creates platform-specific packages:

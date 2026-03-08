@@ -83,30 +83,83 @@ class NativeHostInstaller {
    * Gets the native messaging host registry path
    */
   getHostRegistryPath(browser = 'chrome') {
+    const paths = this.getHostRegistryPaths(browser);
+    return paths[0];
+  }
+
+  /**
+   * Gets all candidate native messaging host registry paths.
+   */
+  getHostRegistryPaths(browser = 'chrome') {
     const homeDir = os.homedir();
 
     switch (this.platform) {
       case 'darwin': // macOS
         if (browser === 'firefox') {
-          return path.join(homeDir, 'Library', 'Application Support', 'Mozilla', 'NativeMessagingHosts');
+          return [path.join(homeDir, 'Library', 'Application Support', 'Mozilla', 'NativeMessagingHosts')];
         }
-        return path.join(homeDir, 'Library', 'Application Support', 'Google', 'Chrome', 'NativeMessagingHosts');
+        return [path.join(homeDir, 'Library', 'Application Support', 'Google', 'Chrome', 'NativeMessagingHosts')];
 
       case 'linux':
         if (browser === 'firefox') {
-          return path.join(homeDir, '.mozilla', 'native-messaging-hosts');
+          return [path.join(homeDir, '.mozilla', 'native-messaging-hosts')];
         }
-        return path.join(homeDir, '.config', 'google-chrome', 'NativeMessagingHosts');
+        return this.getLinuxChromeHostRegistryPaths();
 
       case 'win32': // Windows
         if (browser === 'firefox') {
-          return 'HKEY_CURRENT_USER\\Software\\Mozilla\\NativeMessagingHosts';
+          return ['HKEY_CURRENT_USER\\Software\\Mozilla\\NativeMessagingHosts'];
         }
-        return 'HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts';
+        return ['HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts'];
 
       default:
         throw new Error(`Unsupported platform: ${this.platform}`);
     }
+  }
+
+  /**
+   * Returns Linux registry paths for Chrome/Chromium style browsers.
+   */
+  getLinuxChromeHostRegistryPaths() {
+    const homeDir = os.homedir();
+    const candidates = [
+      {
+        command: 'google-chrome',
+        path: path.join(homeDir, '.config', 'google-chrome', 'NativeMessagingHosts')
+      },
+      {
+        command: 'chromium',
+        path: path.join(homeDir, '.config', 'chromium', 'NativeMessagingHosts')
+      },
+      {
+        command: 'chromium-browser',
+        path: path.join(homeDir, '.config', 'chromium-browser', 'NativeMessagingHosts')
+      }
+    ];
+
+    const ordered = [];
+
+    // Prefer browser commands that are installed on this machine.
+    for (const candidate of candidates) {
+      if (this.commandExists(candidate.command)) {
+        ordered.push(candidate.path);
+      }
+    }
+
+    // Include existing profile dirs so uninstall and re-install can cleanly update.
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate.path)) {
+        ordered.push(candidate.path);
+      }
+    }
+
+    const unique = [...new Set(ordered)];
+    if (unique.length > 0) {
+      return unique;
+    }
+
+    // Fallback path for first-time installs when no Chromium profile dir exists yet.
+    return [candidates[0].path];
   }
 
   /**
@@ -513,22 +566,24 @@ exec "$NODE_BIN" "$SCRIPT_DIR/src/bridge_cli.js" "$@" 2>>"$LOG_DIR/firefox_launc
    */
   async registerHostUnix(browser = 'chrome') {
     const manifest = this.createHostManifest(browser);
-    const hostDir = this.getHostRegistryPath(browser);
+    const hostDirs = this.getHostRegistryPaths(browser);
 
-    if (!fs.existsSync(hostDir)) {
-      fs.mkdirSync(hostDir, { recursive: true });
+    for (const hostDir of hostDirs) {
+      if (!fs.existsSync(hostDir)) {
+        fs.mkdirSync(hostDir, { recursive: true });
+      }
+
+      const manifestPath = path.join(hostDir, 'com.d4ab.hardware_bridge.json');
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+      console.log(`✅ Host manifest written to: ${manifestPath}`);
     }
-
-    const manifestPath = path.join(hostDir, 'com.d4ab.hardware_bridge.json');
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
     // Make sure the binary is executable
     const binaryPath = manifest.path;
     if (fs.existsSync(binaryPath)) {
       fs.chmodSync(binaryPath, '755');
     }
-
-    console.log(`✅ Host manifest written to: ${manifestPath}`);
   }
 
   /**
@@ -629,12 +684,17 @@ exec "$NODE_BIN" "$SCRIPT_DIR/src/bridge_cli.js" "$@" 2>>"$LOG_DIR/firefox_launc
           console.warn('⚠️  Could not remove registry entry');
         }
       } else {
-        const manifestPaths = [
-          path.join(this.getHostRegistryPath('chrome'), 'com.d4ab.hardware_bridge.json'),
-          path.join(this.getHostRegistryPath('firefox'), 'com.d4ab.hardware_bridge.json')
-        ];
+        const manifestPaths = [];
 
-        for (const manifestPath of manifestPaths) {
+        for (const hostDir of this.getHostRegistryPaths('chrome')) {
+          manifestPaths.push(path.join(hostDir, 'com.d4ab.hardware_bridge.json'));
+        }
+
+        for (const hostDir of this.getHostRegistryPaths('firefox')) {
+          manifestPaths.push(path.join(hostDir, 'com.d4ab.hardware_bridge.json'));
+        }
+
+        for (const manifestPath of [...new Set(manifestPaths)]) {
           if (fs.existsSync(manifestPath)) {
             fs.unlinkSync(manifestPath);
             console.log(`✅ Host manifest removed: ${manifestPath}`);
