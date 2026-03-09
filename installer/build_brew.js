@@ -103,7 +103,7 @@ class BrewBuilder {
     const url = `file://${this.tarballPath}`;
     const formula = `class D4abHardwareBridge < Formula
   desc "Native hardware bridge for D4AB browser extension"
-  homepage "https://github.com/beriberikix/d4ab"
+  homepage "https://github.com/beriberikix/webhw"
   url "${url}"
   sha256 "${sha256}"
   license "MIT"

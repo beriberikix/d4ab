@@ -40,8 +40,8 @@ npm install -g d4ab-hardware-bridge
 
 ```bash
 # Clone repository
-git clone https://github.com/d4ab/hardware-bridge.git
-cd hardware-bridge/backend
+git clone https://github.com/beriberikix/webhw.git
+cd webhw/backend
 
 # Install dependencies
 npm install
@@ -556,8 +556,8 @@ node --prof d4ab-bridge
 ### Building from Source
 
 ```bash
-git clone https://github.com/d4ab/hardware-bridge.git
-cd hardware-bridge/backend
+git clone https://github.com/beriberikix/webhw.git
+cd webhw/backend
 
 # Install dependencies
 npm install
@@ -890,4 +890,4 @@ cp ~/d4ab-config-backup.json ~/.d4ab/config.json
 - **Compliance**: Hardware regulations vary by region
 - **Liability**: Use at your own risk
 
-For technical support, visit: https://github.com/d4ab/hardware-bridge/issues
+For technical support, visit: https://github.com/beriberikix/webhw/issues

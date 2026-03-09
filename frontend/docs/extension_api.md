@@ -607,4 +607,4 @@ The extension provides compatibility with standard Web APIs:
 - **Documentation**: Additional guides and examples
 - **Community**: Discord server for developers
 
-For more information, visit the [project repository](https://github.com/d4ab/hardware-bridge).
+For more information, visit the [project repository](https://github.com/beriberikix/webhw).

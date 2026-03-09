@@ -42,8 +42,8 @@ The system consists of two main components:
 
 ```bash
 # Clone the repository
-git clone https://github.com/d4ab/hardware-bridge.git
-cd d4ab
+git clone https://github.com/beriberikix/webhw.git
+cd webhw
 
 # Install backend dependencies
 cd backend
@@ -493,8 +493,8 @@ localStorage.setItem('d4ab-debug', 'true');
 
 ```bash
 # Clone and setup
-git clone https://github.com/d4ab/hardware-bridge.git
-cd d4ab
+git clone https://github.com/beriberikix/webhw.git
+cd webhw
 
 # Install all dependencies
 npm run install:all
@@ -539,4 +539,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Ready to bridge the gap between web and hardware?** 🌉
 
-For support, visit [GitHub Issues](https://github.com/d4ab/hardware-bridge/issues) or join our [Discord community](https://discord.gg/d4ab).
+For support, visit [GitHub Issues](https://github.com/beriberikix/webhw/issues) or join our [Discord community](https://discord.gg/d4ab).
