@@ -90,8 +90,27 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Install Windows packaging toolchain
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: choco install nsis innosetup -y --no-progress
+
       - name: Build installer for host platform
         run: node installer/build_installer.js
+
+      - name: Verify Windows installer binary
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          $installer = Get-ChildItem -Path dist -Recurse -File |
+            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-installer\.exe$' } |
+            Select-Object -First 1
+
+          if (-not $installer) {
+            throw 'No NSIS Windows installer executable was produced. Winget publish flow expects d4ab-bridge-<version>-windows-installer.exe.'
+          }
+
+          Write-Host "Found Windows installer: $($installer.FullName)"
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
@@ -154,7 +173,32 @@ jobs:
           for artifact_dir in release-artifacts/*; do
             if [[ -d "${artifact_dir}" ]]; then
               bundle_name="$(basename "${artifact_dir}")"
-              tar -czf "release-bundles/${bundle_name}.tar.gz" -C release-artifacts "${bundle_name}"
+
+              # Keep Windows installer payload as zip for native Windows tooling expectations.
+              if [[ "${bundle_name}" == "installer-windows-latest" ]]; then
+                if ! command -v zip >/dev/null 2>&1; then
+                  echo "zip command is required to package Windows installer artifacts."
+                  exit 1
+                fi
+                (
+                  cd release-artifacts
+                  zip -r "../release-bundles/${bundle_name}.zip" "${bundle_name}"
+                )
+
+                # Publish a direct installer binary for winget manifests.
+                win_installer_path="$(find "${artifact_dir}" -type f -name '*-windows-installer.exe' | sort | head -n1 || true)"
+                if [[ -z "${win_installer_path}" ]]; then
+                  echo "No NSIS Windows installer executable was found in downloaded artifacts."
+                  exit 1
+                fi
+
+                release_version="${GITHUB_REF_NAME#v}"
+                release_installer_name="d4ab-bridge-${release_version}-windows-installer.exe"
+                cp "${win_installer_path}" "release-bundles/${release_installer_name}"
+              else
+                tar -czf "release-bundles/${bundle_name}.tar.gz" -C release-artifacts "${bundle_name}"
+              fi
+
               bundle_count=$((bundle_count + 1))
             fi
           done
@@ -168,13 +212,104 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find release-bundles -type f -name '*.tar.gz' -print0 | sort -z | xargs -0 sha256sum > release-bundles/SHA256SUMS.txt
+          find release-bundles -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.exe' \) -print0 | sort -z | xargs -0 sha256sum > release-bundles/SHA256SUMS.txt
+
+      - name: Generate winget manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          package_identifier="D4AB.HardwareBridge"
+          package_version="${GITHUB_REF_NAME#v}"
+          installer_file="$(find release-bundles -maxdepth 1 -type f -name 'd4ab-bridge-*-windows-installer.exe' | head -n1 || true)"
+
+          if [[ -z "${installer_file}" ]]; then
+            echo "No canonical Windows installer executable found for winget manifest generation."
+            exit 1
+          fi
+
+          installer_name="$(basename "${installer_file}")"
+          installer_sha="$(sha256sum "${installer_file}" | awk '{print toupper($1)}')"
+          installer_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${installer_name}"
+
+          mkdir -p release-bundles/winget
+
+            export package_identifier package_version installer_url installer_sha
+            python3 - <<'PY'
+            import os
+            from pathlib import Path
+
+            package_identifier = os.environ['package_identifier']
+            package_version = os.environ['package_version']
+            installer_url = os.environ['installer_url']
+            installer_sha = os.environ['installer_sha']
+
+            out_dir = Path('release-bundles/winget')
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            (out_dir / f"{package_identifier}.yaml").write_text(
+              "\n".join([
+                f"PackageIdentifier: {package_identifier}",
+                f"PackageVersion: {package_version}",
+                "DefaultLocale: en-US",
+                "ManifestType: version",
+                "ManifestVersion: 1.6.0",
+                "",
+              ]),
+              encoding='utf-8',
+            )
+
+            (out_dir / f"{package_identifier}.locale.en-US.yaml").write_text(
+              "\n".join([
+                f"PackageIdentifier: {package_identifier}",
+                f"PackageVersion: {package_version}",
+                "PackageLocale: en-US",
+                "Publisher: D4AB Project",
+                "PackageName: D4AB Hardware Bridge",
+                "License: MIT",
+                "ShortDescription: Hardware access bridge for web applications.",
+                f"Homepage: https://github.com/{os.environ['GITHUB_REPOSITORY']}",
+                f"ReleaseNotesUrl: https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/tag/{os.environ['GITHUB_REF_NAME']}",
+                "ManifestType: defaultLocale",
+                "ManifestVersion: 1.6.0",
+                "",
+              ]),
+              encoding='utf-8',
+            )
+
+            (out_dir / f"{package_identifier}.installer.yaml").write_text(
+              "\n".join([
+                f"PackageIdentifier: {package_identifier}",
+                f"PackageVersion: {package_version}",
+                "InstallerType: nullsoft",
+                "InstallModes:",
+                "  - interactive",
+                "  - silent",
+                "  - silentWithProgress",
+                "InstallerSwitches:",
+                "  Silent: /S",
+                "  SilentWithProgress: /S",
+                "UpgradeBehavior: install",
+                "Installers:",
+                "  - Architecture: x64",
+                f"    InstallerUrl: {installer_url}",
+                f"    InstallerSha256: {installer_sha}",
+                "ManifestType: installer",
+                "ManifestVersion: 1.6.0",
+                "",
+              ]),
+              encoding='utf-8',
+            )
+            PY
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             release-bundles/*.tar.gz
+            release-bundles/*.zip
+            release-bundles/*.exe
             release-bundles/SHA256SUMS.txt
+            release-bundles/winget/*.yaml
           generate_release_notes: true
           fail_on_unmatched_files: true

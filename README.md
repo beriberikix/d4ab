@@ -223,6 +223,15 @@ node build_installer.js --target brew
 npm run build:all
 ```
 
+### Winget-Ready Windows Release Assets
+
+Release builds now publish Windows artifacts in two forms:
+
+- `installer-windows-latest.zip`: full Windows installer payload bundle
+- `d4ab-bridge-<version>-windows-installer.exe`: direct NSIS installer for winget
+
+The release workflow also generates winget manifest files (`version`, `defaultLocale`, `installer`) under `release-bundles/winget/` so they can be submitted to `microsoft/winget-pkgs`.
+
 ### Local Homebrew Install (macOS and Linux)
 
 ```bash
