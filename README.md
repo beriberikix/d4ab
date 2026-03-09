@@ -243,8 +243,8 @@ npm run build:all
 
 Release builds now publish Windows artifacts in two forms:
 
-- `installer-windows-latest.zip`: full Windows installer payload bundle
-- `d4ab-bridge-<version>-windows-installer.exe`: direct installer executable (NSIS or Inno) for winget
+- `installer-windows-latest-x64.zip` and `installer-windows-latest-arm64.zip`: full Windows installer payload bundles
+- `d4ab-bridge-<version>-windows-x64-installer.exe` and `d4ab-bridge-<version>-windows-arm64-installer.exe`: direct installer executables (NSIS or Inno) for winget
 
 The release workflow also generates winget manifest files (`version`, `defaultLocale`, `installer`) under `release-bundles/winget/` so they can be submitted to `microsoft/winget-pkgs`.
 
@@ -354,7 +354,7 @@ npm --prefix frontend run test:ci
 The CI-safe subset intentionally excludes browser/hardware-heavy suites (`frontend/tests/integration`, `frontend/tests/e2e`, and `frontend/tests/performance`) in the first CI phase.
 
 GitHub Actions workflows currently included:
-- `.github/workflows/ci-tests.yml`: runs the CI-safe test subset on Node 18.x and 20.x for pull requests and pushes to `main`.
+- `.github/workflows/ci-tests.yml`: runs production dependency audit (`npm audit --omit=dev`) and the CI-safe test subset on Node 18.x and 20.x for pull requests and pushes to `main` (default audit threshold: `critical`, configurable via `D4AB_AUDIT_LEVEL`).
 - `.github/workflows/ci-installers.yml`: builds installer artifacts on Linux/macOS/Windows, plus Homebrew artifacts on Linux/macOS, and uploads them as workflow artifacts (no marketplace publishing yet).
 
 ### Test with Real Hardware

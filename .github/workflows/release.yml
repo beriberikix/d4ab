@@ -12,7 +12,38 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  D4AB_AUDIT_LEVEL: critical
+
 jobs:
+  version-consistency:
+    name: Validate Release Version Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate tag version against package manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_version="${GITHUB_REF_NAME#v}"
+          backend_version="$(node -p \"require('./backend/package.json').version\")"
+          frontend_version="$(node -p \"require('./frontend/package.json').version\")"
+
+          if [[ "${backend_version}" != "${release_version}" ]]; then
+            echo "backend/package.json version (${backend_version}) does not match tag (${release_version})."
+            exit 1
+          fi
+
+          if [[ "${frontend_version}" != "${release_version}" ]]; then
+            echo "frontend/package.json version (${frontend_version}) does not match tag (${release_version})."
+            exit 1
+          fi
+
+          echo "Version check passed for tag v${release_version}."
+
   backend-tests:
     name: Backend Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
@@ -22,6 +53,8 @@ jobs:
         node-version:
           - 18.x
           - 20.x
+    needs:
+      - version-consistency
     defaults:
       run:
         working-directory: backend
@@ -39,6 +72,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level="${D4AB_AUDIT_LEVEL}"
+
       - name: Run CI-safe tests
         run: npm run test:ci
 
@@ -51,6 +87,8 @@ jobs:
         node-version:
           - 18.x
           - 20.x
+    needs:
+      - version-consistency
     defaults:
       run:
         working-directory: frontend
@@ -68,11 +106,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level="${D4AB_AUDIT_LEVEL}"
+
       - name: Run CI-safe tests
         run: npm run test:ci
 
   build-platform-installers:
-    name: Build Platform Installer (${{ matrix.os }})
+    name: Build Platform Installer (${{ matrix.os }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -81,6 +122,11 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
+        arch:
+          - x64
+          - arm64
+    needs:
+      - version-consistency
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,18 +142,18 @@ jobs:
         run: choco install nsis innosetup -y --no-progress
 
       - name: Build installer for host platform
-        run: node installer/build_installer.js
+        run: node installer/build_installer.js --arch ${{ matrix.arch }}
 
       - name: Verify Windows installer binary
         if: matrix.os == 'windows-latest'
         shell: powershell
         run: |
           $installer = Get-ChildItem -Path dist -Recurse -File |
-            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-(installer|inno)\.exe$' } |
+            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-(x64|arm64)-(installer|inno)\.exe$' } |
             Select-Object -First 1
 
           if (-not $installer) {
-            throw 'No Windows installer executable was produced. Winget publish flow requires d4ab-bridge-<version>-windows-(installer|inno).exe.'
+            throw 'No Windows installer executable was produced. Winget publish flow requires d4ab-bridge-<version>-windows-<arch>-(installer|inno).exe.'
           }
 
           Write-Host "Found Windows installer: $($installer.FullName)"
@@ -115,7 +161,7 @@ jobs:
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: installer-${{ matrix.os }}
+          name: installer-${{ matrix.os }}-${{ matrix.arch }}
           path: dist/**
           if-no-files-found: error
 
@@ -128,6 +174,8 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
+    needs:
+      - version-consistency
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -150,6 +198,8 @@ jobs:
   build-extension-packages:
     name: Build Extension Packages
     runs-on: ubuntu-latest
+    needs:
+      - version-consistency
     defaults:
       run:
         working-directory: frontend
@@ -199,6 +249,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-bundles
+          : > release-bundles/windows-installers-index.txt
 
           bundle_count=0
           for artifact_dir in release-artifacts/*; do
@@ -206,7 +257,7 @@ jobs:
               bundle_name="$(basename "${artifact_dir}")"
 
               # Keep Windows installer payload as zip for native Windows tooling expectations.
-              if [[ "${bundle_name}" == "installer-windows-latest" ]]; then
+              if [[ "${bundle_name}" == installer-windows-latest-* ]]; then
                 if ! command -v zip >/dev/null 2>&1; then
                   echo "zip command is required to package Windows installer artifacts."
                   exit 1
@@ -216,12 +267,12 @@ jobs:
                   zip -r "../release-bundles/${bundle_name}.zip" "${bundle_name}"
                 )
 
-                # Publish a direct installer binary for winget manifests.
-                win_installer_path="$(find "${artifact_dir}" -type f -name '*-windows-installer.exe' | sort | head -n1 || true)"
+                # Publish direct installer binaries for winget manifests.
+                win_installer_path="$(find "${artifact_dir}" -type f -name '*-windows-*-installer.exe' | sort | head -n1 || true)"
                 installer_type="nullsoft"
 
                 if [[ -z "${win_installer_path}" ]]; then
-                  win_installer_path="$(find "${artifact_dir}" -type f -name '*-windows-inno.exe' | sort | head -n1 || true)"
+                  win_installer_path="$(find "${artifact_dir}" -type f -name '*-windows-*-inno.exe' | sort | head -n1 || true)"
                   installer_type="inno"
                 fi
 
@@ -230,10 +281,16 @@ jobs:
                   exit 1
                 fi
 
-                release_version="${GITHUB_REF_NAME#v}"
-                release_installer_name="d4ab-bridge-${release_version}-windows-installer.exe"
-                cp "${win_installer_path}" "release-bundles/${release_installer_name}"
-                echo "${installer_type}" > release-bundles/windows-installer-type.txt
+                win_installer_name="$(basename "${win_installer_path}")"
+                if [[ "${win_installer_name}" =~ -windows-(x64|arm64)- ]]; then
+                  installer_arch="${BASH_REMATCH[1]}"
+                else
+                  echo "Could not determine installer architecture from ${win_installer_name}."
+                  exit 1
+                fi
+
+                cp "${win_installer_path}" "release-bundles/${win_installer_name}"
+                echo "${installer_arch}|${installer_type}|${win_installer_name}" >> release-bundles/windows-installers-index.txt
               elif [[ "${bundle_name}" == "extensions" ]]; then
                 ext_count=0
                 while IFS= read -r -d '' extension_file; do
@@ -258,6 +315,11 @@ jobs:
             exit 1
           fi
 
+          if [[ ! -s release-bundles/windows-installers-index.txt ]]; then
+            echo "No Windows installer metadata was captured for winget generation."
+            exit 1
+          fi
+
       - name: Generate SHA256 checksums
         shell: bash
         run: |
@@ -271,17 +333,49 @@ jobs:
 
           package_identifier="D4AB.HardwareBridge"
           package_version="${GITHUB_REF_NAME#v}"
-          installer_file="$(find release-bundles -maxdepth 1 -type f -name 'd4ab-bridge-*-windows-installer.exe' | head -n1 || true)"
-          installer_type="$(cat release-bundles/windows-installer-type.txt 2>/dev/null || echo nullsoft)"
+          installer_index="release-bundles/windows-installers-index.txt"
 
-          if [[ -z "${installer_file}" ]]; then
-            echo "No canonical Windows installer executable found for winget manifest generation."
+          if [[ ! -s "${installer_index}" ]]; then
+            echo "No Windows installer index found for winget manifest generation."
             exit 1
           fi
 
-          installer_name="$(basename "${installer_file}")"
-          installer_sha="$(sha256sum "${installer_file}" | awk '{print toupper($1)}')"
-          installer_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${installer_name}"
+          installers_yaml=""
+          installer_type=""
+
+          while IFS='|' read -r installer_arch detected_type installer_name; do
+            [[ -z "${installer_arch}" || -z "${detected_type}" || -z "${installer_name}" ]] && continue
+
+            if [[ "${installer_arch}" != "x64" && "${installer_arch}" != "arm64" ]]; then
+              echo "Unsupported installer architecture for winget: ${installer_arch}"
+              exit 1
+            fi
+
+            if [[ -z "${installer_type}" ]]; then
+              installer_type="${detected_type}"
+            elif [[ "${installer_type}" != "${detected_type}" ]]; then
+              echo "Mixed Windows installer types detected (${installer_type} vs ${detected_type}); winget manifest requires one installer type."
+              exit 1
+            fi
+
+            installer_file="release-bundles/${installer_name}"
+            if [[ ! -f "${installer_file}" ]]; then
+              echo "Indexed installer file not found: ${installer_file}"
+              exit 1
+            fi
+
+            installer_sha="$(sha256sum "${installer_file}" | awk '{print toupper($1)}')"
+            installer_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${installer_name}"
+
+            installers_yaml+="  - Architecture: ${installer_arch}"$'\n'
+            installers_yaml+="    InstallerUrl: ${installer_url}"$'\n'
+            installers_yaml+="    InstallerSha256: ${installer_sha}"$'\n'
+          done < "${installer_index}"
+
+          if [[ -z "${installer_type}" || -z "${installers_yaml}" ]]; then
+            echo "No valid Windows installers were found for winget manifest generation."
+            exit 1
+          fi
 
           mkdir -p release-bundles/winget
 
@@ -320,9 +414,11 @@ jobs:
             SilentWithProgress: /S
           UpgradeBehavior: install
           Installers:
-            - Architecture: x64
-              InstallerUrl: ${installer_url}
-              InstallerSha256: ${installer_sha}
+          EOF
+
+          printf "%s" "${installers_yaml}" >> "release-bundles/winget/${package_identifier}.installer.yaml"
+
+          cat >> "release-bundles/winget/${package_identifier}.installer.yaml" <<EOF
           ManifestType: installer
           ManifestVersion: 1.6.0
           EOF

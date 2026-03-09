@@ -307,6 +307,8 @@ class InstallerBuilder {
    * Generates Inno Setup script for Windows installer packaging.
    */
   async generateInnoSetupScript() {
+    const innoArchitectureMode = this.arch === 'arm64' ? 'arm64' : 'x64compatible';
+
     return `
 #define MyAppName "${this.config.name}"
 #define MyAppVersion "${this.version}"
@@ -325,10 +327,10 @@ DefaultDirName={localappdata}\\D4AB
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=.
-OutputBaseFilename=d4ab-bridge-{#MyAppVersion}-windows-inno
+OutputBaseFilename=d4ab-bridge-{#MyAppVersion}-windows-${this.arch}-inno
 Compression=lzma
 SolidCompression=yes
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesInstallIn64BitMode=${innoArchitectureMode}
 WizardStyle=modern
 UninstallDisplayName={#MyAppName}
 
@@ -485,7 +487,7 @@ end;
 
     // Try to create DMG if hdiutil is available
     try {
-      const dmgPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-macos.dmg`);
+      const dmgPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-macos-${this.arch}.dmg`);
       this.execCommand(`hdiutil create -srcfolder "${this.platformDir}" "${dmgPath}"`, this.platformDir);
       console.log('✅ DMG installer created');
     } catch (error) {
@@ -574,7 +576,7 @@ end;
 !define APPIDENTIFIER "${this.config.identifier}"
 
 Name "\${APPNAME}"
-OutFile "d4ab-bridge-\${APPVERSION}-windows-installer.exe"
+OutFile "d4ab-bridge-\${APPVERSION}-windows-${this.arch}-installer.exe"
 InstallDir "$PROGRAMFILES64\\D4AB Hardware Bridge"
 
 Page directory
@@ -952,7 +954,7 @@ echo "You can now use 'd4ab-bridge' command from any terminal."
    * Creates ZIP package
    */
   async createZipPackage(platform) {
-    const zipPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-${platform}.zip`);
+    const zipPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-${platform}-${this.arch}.zip`);
 
     try {
       this.execCommand(`cd "${this.platformDir}" && zip -r "${zipPath}" .`, this.platformDir);
@@ -966,7 +968,7 @@ echo "You can now use 'd4ab-bridge' command from any terminal."
    * Creates TAR package
    */
   async createTarPackage(platform) {
-    const tarPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-${platform}.tar.gz`);
+    const tarPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-${platform}-${this.arch}.tar.gz`);
 
     try {
       this.execCommand(`tar -czf "${tarPath}" -C "${this.platformDir}" .`, this.platformDir);
