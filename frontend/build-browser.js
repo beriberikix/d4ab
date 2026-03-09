@@ -8,61 +8,39 @@
 const fs = require('fs');
 const path = require('path');
 
-function copyManifestForBrowser(browser) {
-  const manifestSrc = path.join(__dirname, `manifest-${browser}.json`);
-  const manifestDest = path.join(__dirname, 'manifest.json');
-
-  if (!fs.existsSync(manifestSrc)) {
-    console.error(`❌ Manifest not found: ${manifestSrc}`);
-    process.exit(1);
-  }
-
-  fs.copyFileSync(manifestSrc, manifestDest);
-  console.log(`✅ Copied manifest for ${browser}`);
+function ensureCleanDirectory(dirPath) {
+  fs.rmSync(dirPath, { recursive: true, force: true });
+  fs.mkdirSync(dirPath, { recursive: true });
 }
 
 function buildForBrowser(browser) {
   console.log(`\n🔨 Building for ${browser.toUpperCase()}...`);
 
-  copyManifestForBrowser(browser);
+  const browserManifestPath = path.join(__dirname, `manifest-${browser}.json`);
+  if (!fs.existsSync(browserManifestPath)) {
+    console.error(`❌ Manifest not found: ${browserManifestPath}`);
+    process.exit(1);
+  }
 
-  // Create browser-specific build directory
   const buildDir = path.join(__dirname, 'build', browser);
-  if (!fs.existsSync(path.dirname(buildDir))) {
-    fs.mkdirSync(path.dirname(buildDir), { recursive: true });
-  }
-  if (!fs.existsSync(buildDir)) {
-    fs.mkdirSync(buildDir, { recursive: true });
-  }
+  ensureCleanDirectory(buildDir);
 
-  // Copy extension files
-  const filesToCopy = [
-    'manifest.json',
-    'src/',
-    'icons/',
-  ];
+  // Write browser-specific manifest directly into the target build directory.
+  fs.copyFileSync(browserManifestPath, path.join(buildDir, 'manifest.json'));
 
-  const { execSync } = require('child_process');
+  const entriesToCopy = ['src', 'icons'];
+  for (const entry of entriesToCopy) {
+    const srcPath = path.join(__dirname, entry);
+    const destPath = path.join(buildDir, entry);
 
-  filesToCopy.forEach(file => {
-    const srcPath = path.join(__dirname, file);
-    const destPath = path.join(buildDir, file);
-
-    if (fs.existsSync(srcPath)) {
-      if (fs.statSync(srcPath).isDirectory()) {
-        execSync(`cp -r "${srcPath}" "${destPath}"`, { stdio: 'inherit' });
-      } else {
-        execSync(`cp "${srcPath}" "${destPath}"`, { stdio: 'inherit' });
-      }
+    if (!fs.existsSync(srcPath)) {
+      continue;
     }
-  });
+
+    fs.cpSync(srcPath, destPath, { recursive: true });
+  }
 
   console.log(`✅ ${browser} build complete in: ${buildDir}`);
-
-  // Clean up
-  if (fs.existsSync(path.join(__dirname, 'manifest.json'))) {
-    fs.unlinkSync(path.join(__dirname, 'manifest.json'));
-  }
 }
 
 function main() {

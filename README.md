@@ -184,9 +184,25 @@ npm install
 # Development build
 npm run build
 
+# Browser-specific builds
+npm run build:chrome
+npm run build:firefox
+
+# Package release artifacts
+npm run package:chrome
+npm run package:firefox
+npm run package:all
+
 # Production package
 npm run package
 ```
+
+Packaged browser artifacts are generated under `frontend/dist/extensions/` with browser-specific names:
+
+- `d4ab-hardware-bridge-chrome-<version>.zip`
+- `d4ab-hardware-bridge-firefox-<version>.xpi`
+
+CI now includes `.github/workflows/ci-extensions.yml`, which builds Chrome and Firefox extension packages on each frontend-related PR/push.
 
 ### Build the Native Bridge
 
