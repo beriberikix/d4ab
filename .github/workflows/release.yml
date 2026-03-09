@@ -29,20 +29,21 @@ jobs:
           set -euo pipefail
 
           release_version="${GITHUB_REF_NAME#v}"
+          release_base_version="${release_version%%-*}"
           backend_version="$(node -p \"require('./backend/package.json').version\")"
           frontend_version="$(node -p \"require('./frontend/package.json').version\")"
 
-          if [[ "${backend_version}" != "${release_version}" ]]; then
-            echo "backend/package.json version (${backend_version}) does not match tag (${release_version})."
+          if [[ "${backend_version}" != "${release_base_version}" ]]; then
+            echo "backend/package.json version (${backend_version}) does not match base tag version (${release_base_version}) from ${release_version}."
             exit 1
           fi
 
-          if [[ "${frontend_version}" != "${release_version}" ]]; then
-            echo "frontend/package.json version (${frontend_version}) does not match tag (${release_version})."
+          if [[ "${frontend_version}" != "${release_base_version}" ]]; then
+            echo "frontend/package.json version (${frontend_version}) does not match base tag version (${release_base_version}) from ${release_version}."
             exit 1
           fi
 
-          echo "Version check passed for tag v${release_version}."
+          echo "Version check passed for tag v${release_version} (base version ${release_base_version})."
 
   backend-tests:
     name: Backend Tests (Node ${{ matrix.node-version }})
