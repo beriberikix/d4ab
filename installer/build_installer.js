@@ -278,11 +278,24 @@ class InstallerBuilder {
     const psPath = path.join(this.platformDir, 'install.ps1');
     await fs.writeFile(psPath, powershellScript);
 
-    // Try to build NSIS installer if available
-    try {
-      this.execCommand(`makensis "${scriptPath}"`, this.platformDir);
-      console.log('✅ NSIS installer created');
-    } catch (error) {
+    // Try to build NSIS installer if available.
+    let nsisCompiled = false;
+    const nsisCompilers = [
+      'makensis',
+      '"C:\\Program Files (x86)\\NSIS\\makensis.exe"',
+      '"C:\\Program Files\\NSIS\\makensis.exe"'
+    ];
+    for (const compiler of nsisCompilers) {
+      try {
+        this.execCommand(`${compiler} "${scriptPath}"`, this.platformDir);
+        console.log('✅ NSIS installer created');
+        nsisCompiled = true;
+        break;
+      } catch (error) {
+        // Try next compiler alias/path.
+      }
+    }
+    if (!nsisCompiled) {
       console.warn('⚠️  NSIS not available, using batch installer');
     }
 
@@ -335,12 +348,12 @@ Source: "installer\\install_native_host.js"; DestDir: "{app}\\installer"; Flags:
 [Run]
 Filename: "{cmd}"; Parameters: "/C winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements --silent"; Flags: runhidden waituntilterminated; Tasks: install_node; Check: IsWingetAvailable
 Filename: "{cmd}"; Parameters: "/C npm install --production"; WorkingDir: "{app}\\backend"; Flags: runhidden waituntilterminated
-Filename: "{code:GetNodeExecutable}"; Parameters: "\"{app}\\installer\\install_native_host.js\" install --non-interactive --browsers firefox"; Flags: runhidden waituntilterminated; Check: ShouldInstallFirefoxOnly
-Filename: "{code:GetNodeExecutable}"; Parameters: "\"{app}\\installer\\install_native_host.js\" install --non-interactive --browsers chrome --allow-placeholder-ids"; Flags: runhidden waituntilterminated; Check: ShouldInstallChromeOnly
-Filename: "{code:GetNodeExecutable}"; Parameters: "\"{app}\\installer\\install_native_host.js\" install --non-interactive --browsers firefox,chrome --allow-placeholder-ids"; Flags: runhidden waituntilterminated; Check: ShouldInstallFirefoxAndChrome
+Filename: "{code:GetNodeExecutable}"; Parameters: """{app}\\installer\\install_native_host.js"" install --non-interactive --browsers firefox"; Flags: runhidden waituntilterminated; Check: ShouldInstallFirefoxOnly
+Filename: "{code:GetNodeExecutable}"; Parameters: """{app}\\installer\\install_native_host.js"" install --non-interactive --browsers chrome --allow-placeholder-ids"; Flags: runhidden waituntilterminated; Check: ShouldInstallChromeOnly
+Filename: "{code:GetNodeExecutable}"; Parameters: """{app}\\installer\\install_native_host.js"" install --non-interactive --browsers firefox,chrome --allow-placeholder-ids"; Flags: runhidden waituntilterminated; Check: ShouldInstallFirefoxAndChrome
 
 [UninstallRun]
-Filename: "{code:GetNodeExecutable}"; Parameters: "\"{app}\\installer\\install_native_host.js\" uninstall"; Flags: runhidden waituntilterminated skipifdoesntexist
+Filename: "{code:GetNodeExecutable}"; Parameters: """{app}\\installer\\install_native_host.js"" uninstall"; Flags: runhidden waituntilterminated skipifdoesntexist
 
 [Code]
 function IsNodeInstalled: Boolean;
