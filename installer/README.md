@@ -34,6 +34,11 @@ Options:
 - `--cleanup-stale-manifests`: remove stale host registrations for unselected browsers (default).
 - `--no-cleanup-stale-manifests`: keep existing stale host registrations.
 
+Upgrade behavior:
+
+- Installer now performs best-effort cleanup of legacy `D4AB` registrations (`com.d4ab.hardware_bridge`) and old install directory paths during `install` and `uninstall`.
+- Cleanup is non-fatal; missing legacy files/keys are ignored.
+
 ## Registration Locations
 
 macOS:

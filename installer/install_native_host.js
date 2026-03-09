@@ -87,6 +87,28 @@ class NativeHostInstaller {
     }
   }
 
+  getLegacyInstallDirs() {
+    const homeDir = os.homedir();
+
+    switch (this.platform) {
+      case 'darwin':
+        return [path.join(homeDir, 'Applications', 'D4AB')];
+
+      case 'linux':
+        return [path.join(homeDir, '.local', 'share', 'd4ab')];
+
+      case 'win32':
+        return [path.join(homeDir, 'AppData', 'Local', 'D4AB')];
+
+      default:
+        return [];
+    }
+  }
+
+  getLegacyHostIdentifiers() {
+    return ['com.d4ab.hardware_bridge'];
+  }
+
   /**
    * Gets the native messaging host registry path
    */
@@ -187,6 +209,9 @@ class NativeHostInstaller {
 
       // Install dependencies
       await this.installDependencies();
+
+      // Clean up old D4AB registration paths so upgrades do not leave stale host entries.
+      await this.cleanupLegacyHostRegistrations();
 
       // Register native messaging host
       await this.registerHost(selectedBrowsers);
@@ -752,6 +777,54 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
     }
   }
 
+  async cleanupLegacyHostRegistrations() {
+    const legacyIds = this.getLegacyHostIdentifiers();
+
+    if (legacyIds.length === 0) {
+      return;
+    }
+
+    console.log('🧹 Checking for legacy D4AB host registrations...');
+
+    if (this.platform === 'win32') {
+      const baseKeys = [
+        'HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts',
+        'HKEY_CURRENT_USER\\Software\\Mozilla\\NativeMessagingHosts'
+      ];
+
+      for (const baseKey of baseKeys) {
+        for (const legacyId of legacyIds) {
+          const regKey = `${baseKey}\\${legacyId}`;
+          try {
+            execSync(`reg delete "${regKey}" /f`, { stdio: 'pipe' });
+            console.log(`✅ Removed legacy registry key: ${regKey}`);
+          } catch (error) {
+            // Ignore when key does not exist.
+          }
+        }
+      }
+    } else {
+      for (const browser of ['chrome', 'firefox']) {
+        for (const hostDir of this.getHostRegistryPaths(browser)) {
+          for (const legacyId of legacyIds) {
+            const legacyManifestPath = path.join(hostDir, `${legacyId}.json`);
+            if (fs.existsSync(legacyManifestPath)) {
+              fs.unlinkSync(legacyManifestPath);
+              console.log(`✅ Removed legacy host manifest: ${legacyManifestPath}`);
+            }
+          }
+        }
+      }
+    }
+
+    for (const legacyInstallDir of this.getLegacyInstallDirs()) {
+      if (legacyInstallDir !== this.installDir && fs.existsSync(legacyInstallDir)) {
+        fs.rmSync(legacyInstallDir, { recursive: true, force: true });
+        console.log(`✅ Removed legacy install directory: ${legacyInstallDir}`);
+      }
+    }
+  }
+
   /**
    * Registers native messaging host on Windows
    */
@@ -874,6 +947,8 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
           }
         }
       }
+
+      await this.cleanupLegacyHostRegistrations();
 
       console.log('✅ Uninstallation complete!');
 
