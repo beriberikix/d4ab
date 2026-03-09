@@ -243,74 +243,47 @@ jobs:
 
           mkdir -p release-bundles/winget
 
-            export package_identifier package_version installer_url installer_sha installer_type
-            python3 - <<'PY'
-            import os
-            from pathlib import Path
+          cat > "release-bundles/winget/${package_identifier}.yaml" <<EOF
+          PackageIdentifier: ${package_identifier}
+          PackageVersion: ${package_version}
+          DefaultLocale: en-US
+          ManifestType: version
+          ManifestVersion: 1.6.0
+          EOF
 
-            package_identifier = os.environ['package_identifier']
-            package_version = os.environ['package_version']
-            installer_url = os.environ['installer_url']
-            installer_sha = os.environ['installer_sha']
-            installer_type = os.environ['installer_type']
+          cat > "release-bundles/winget/${package_identifier}.locale.en-US.yaml" <<EOF
+          PackageIdentifier: ${package_identifier}
+          PackageVersion: ${package_version}
+          PackageLocale: en-US
+          Publisher: D4AB Project
+          PackageName: D4AB Hardware Bridge
+          License: MIT
+          ShortDescription: Hardware access bridge for web applications.
+          Homepage: https://github.com/${GITHUB_REPOSITORY}
+          ReleaseNotesUrl: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}
+          ManifestType: defaultLocale
+          ManifestVersion: 1.6.0
+          EOF
 
-            out_dir = Path('release-bundles/winget')
-            out_dir.mkdir(parents=True, exist_ok=True)
-
-            (out_dir / f"{package_identifier}.yaml").write_text(
-              "\n".join([
-                f"PackageIdentifier: {package_identifier}",
-                f"PackageVersion: {package_version}",
-                "DefaultLocale: en-US",
-                "ManifestType: version",
-                "ManifestVersion: 1.6.0",
-                "",
-              ]),
-              encoding='utf-8',
-            )
-
-            (out_dir / f"{package_identifier}.locale.en-US.yaml").write_text(
-              "\n".join([
-                f"PackageIdentifier: {package_identifier}",
-                f"PackageVersion: {package_version}",
-                "PackageLocale: en-US",
-                "Publisher: D4AB Project",
-                "PackageName: D4AB Hardware Bridge",
-                "License: MIT",
-                "ShortDescription: Hardware access bridge for web applications.",
-                f"Homepage: https://github.com/{os.environ['GITHUB_REPOSITORY']}",
-                f"ReleaseNotesUrl: https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/tag/{os.environ['GITHUB_REF_NAME']}",
-                "ManifestType: defaultLocale",
-                "ManifestVersion: 1.6.0",
-                "",
-              ]),
-              encoding='utf-8',
-            )
-
-            (out_dir / f"{package_identifier}.installer.yaml").write_text(
-              "\n".join([
-                f"PackageIdentifier: {package_identifier}",
-                f"PackageVersion: {package_version}",
-                  f"InstallerType: {installer_type}",
-                "InstallModes:",
-                "  - interactive",
-                "  - silent",
-                "  - silentWithProgress",
-                "InstallerSwitches:",
-                "  Silent: /S",
-                "  SilentWithProgress: /S",
-                "UpgradeBehavior: install",
-                "Installers:",
-                "  - Architecture: x64",
-                f"    InstallerUrl: {installer_url}",
-                f"    InstallerSha256: {installer_sha}",
-                "ManifestType: installer",
-                "ManifestVersion: 1.6.0",
-                "",
-              ]),
-              encoding='utf-8',
-            )
-            PY
+          cat > "release-bundles/winget/${package_identifier}.installer.yaml" <<EOF
+          PackageIdentifier: ${package_identifier}
+          PackageVersion: ${package_version}
+          InstallerType: ${installer_type}
+          InstallModes:
+            - interactive
+            - silent
+            - silentWithProgress
+          InstallerSwitches:
+            Silent: /S
+            SilentWithProgress: /S
+          UpgradeBehavior: install
+          Installers:
+            - Architecture: x64
+              InstallerUrl: ${installer_url}
+              InstallerSha256: ${installer_sha}
+          ManifestType: installer
+          ManifestVersion: 1.6.0
+          EOF
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
