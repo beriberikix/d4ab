@@ -103,11 +103,11 @@ jobs:
         shell: powershell
         run: |
           $installer = Get-ChildItem -Path dist -Recurse -File |
-            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-installer\.exe$' } |
+            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-(installer|inno)\.exe$' } |
             Select-Object -First 1
 
           if (-not $installer) {
-            throw 'No NSIS Windows installer executable was produced. Winget publish flow expects d4ab-bridge-<version>-windows-installer.exe.'
+            throw 'No Windows installer executable was produced. Winget publish flow requires d4ab-bridge-<version>-windows-(installer|inno).exe.'
           }
 
           Write-Host "Found Windows installer: $($installer.FullName)"
@@ -187,14 +187,22 @@ jobs:
 
                 # Publish a direct installer binary for winget manifests.
                 win_installer_path="$(find "${artifact_dir}" -type f -name '*-windows-installer.exe' | sort | head -n1 || true)"
+                installer_type="nullsoft"
+
                 if [[ -z "${win_installer_path}" ]]; then
-                  echo "No NSIS Windows installer executable was found in downloaded artifacts."
+                  win_installer_path="$(find "${artifact_dir}" -type f -name '*-windows-inno.exe' | sort | head -n1 || true)"
+                  installer_type="inno"
+                fi
+
+                if [[ -z "${win_installer_path}" ]]; then
+                  echo "No Windows installer executable was found in downloaded artifacts."
                   exit 1
                 fi
 
                 release_version="${GITHUB_REF_NAME#v}"
                 release_installer_name="d4ab-bridge-${release_version}-windows-installer.exe"
                 cp "${win_installer_path}" "release-bundles/${release_installer_name}"
+                echo "${installer_type}" > release-bundles/windows-installer-type.txt
               else
                 tar -czf "release-bundles/${bundle_name}.tar.gz" -C release-artifacts "${bundle_name}"
               fi
@@ -222,6 +230,7 @@ jobs:
           package_identifier="D4AB.HardwareBridge"
           package_version="${GITHUB_REF_NAME#v}"
           installer_file="$(find release-bundles -maxdepth 1 -type f -name 'd4ab-bridge-*-windows-installer.exe' | head -n1 || true)"
+          installer_type="$(cat release-bundles/windows-installer-type.txt 2>/dev/null || echo nullsoft)"
 
           if [[ -z "${installer_file}" ]]; then
             echo "No canonical Windows installer executable found for winget manifest generation."
@@ -234,7 +243,7 @@ jobs:
 
           mkdir -p release-bundles/winget
 
-            export package_identifier package_version installer_url installer_sha
+            export package_identifier package_version installer_url installer_sha installer_type
             python3 - <<'PY'
             import os
             from pathlib import Path
@@ -243,6 +252,7 @@ jobs:
             package_version = os.environ['package_version']
             installer_url = os.environ['installer_url']
             installer_sha = os.environ['installer_sha']
+            installer_type = os.environ['installer_type']
 
             out_dir = Path('release-bundles/winget')
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -281,7 +291,7 @@ jobs:
               "\n".join([
                 f"PackageIdentifier: {package_identifier}",
                 f"PackageVersion: {package_version}",
-                "InstallerType: nullsoft",
+                  f"InstallerType: {installer_type}",
                 "InstallModes:",
                 "  - interactive",
                 "  - silent",

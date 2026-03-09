@@ -324,7 +324,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "install_node"; Description: "Install Node.js LTS via winget if missing"; Flags: unchecked; Check: NeedsNodeInstall
-Name: "register_firefox"; Description: "Register native host for Firefox (recommended)"; Flags: checked; Check: IsFirefoxInstalled
+Name: "register_firefox"; Description: "Register native host for Firefox (recommended)"; Check: IsFirefoxInstalled
 Name: "register_chrome"; Description: "Register native host for Chrome (disabled by default)"; Flags: unchecked; Check: IsChromeInstalled
 
 [Files]

@@ -69,11 +69,11 @@ jobs:
         shell: powershell
         run: |
           $installer = Get-ChildItem -Path dist -Recurse -File |
-            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-installer\.exe$' } |
+            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-(installer|inno)\.exe$' } |
             Select-Object -First 1
 
           if (-not $installer) {
-            throw 'No NSIS Windows installer executable was produced. Winget publish flow expects d4ab-bridge-<version>-windows-installer.exe.'
+            throw 'No Windows installer executable was produced. Winget publish flow requires d4ab-bridge-<version>-windows-(installer|inno).exe.'
           }
 
           Write-Host "Found Windows installer: $($installer.FullName)"

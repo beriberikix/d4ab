@@ -228,7 +228,7 @@ npm run build:all
 Release builds now publish Windows artifacts in two forms:
 
 - `installer-windows-latest.zip`: full Windows installer payload bundle
-- `d4ab-bridge-<version>-windows-installer.exe`: direct NSIS installer for winget
+- `d4ab-bridge-<version>-windows-installer.exe`: direct installer executable (NSIS or Inno) for winget
 
 The release workflow also generates winget manifest files (`version`, `defaultLocale`, `installer`) under `release-bundles/winget/` so they can be submitted to `microsoft/winget-pkgs`.
 
