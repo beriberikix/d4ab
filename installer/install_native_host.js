@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * D4AB Native Messaging Host Installer
- * Installs the native messaging host for D4AB Hardware Bridge
+ * WebHW Native Messaging Host Installer
+ * Installs the native messaging host for WebHW Hardware Bridge
  */
 
 const fs = require('fs');
@@ -74,13 +74,13 @@ class NativeHostInstaller {
 
     switch (this.platform) {
       case 'darwin': // macOS
-        return path.join(homeDir, 'Applications', 'D4AB');
+        return path.join(homeDir, 'Applications', 'WebHW');
 
       case 'linux':
-        return path.join(homeDir, '.local', 'share', 'd4ab');
+        return path.join(homeDir, '.local', 'share', 'webhw');
 
       case 'win32': // Windows
-        return path.join(homeDir, 'AppData', 'Local', 'D4AB');
+        return path.join(homeDir, 'AppData', 'Local', 'WebHW');
 
       default:
         throw new Error(`Unsupported platform: ${this.platform}`);
@@ -174,7 +174,7 @@ class NativeHostInstaller {
    * Installs the native messaging host
    */
   async install() {
-    console.log('Installing D4AB Native Messaging Host...');
+    console.log('Installing WebHW Native Messaging Host...');
 
     try {
       const selectedBrowsers = await this.resolveBrowserTargets();
@@ -274,7 +274,7 @@ class NativeHostInstaller {
    * Creates Firefox native host launcher script with explicit Node resolution.
    */
   createFirefoxLauncherScript() {
-    const launcherPath = path.join(this.installDir, 'd4ab-bridge.sh');
+    const launcherPath = path.join(this.installDir, 'webhw-bridge.sh');
     const script = `#!/bin/bash
 
 SCRIPT_DIR="$( cd "$( dirname "\${BASH_SOURCE[0]}" )" && pwd )"
@@ -305,7 +305,7 @@ exec "$NODE_BIN" "$SCRIPT_DIR/src/bridge_cli.js" "$@" 2>>"$LOG_DIR/firefox_launc
    * Creates Windows launcher script with explicit Node resolution.
    */
   createWindowsLauncherScript() {
-    const launcherPath = path.join(this.installDir, 'd4ab-bridge.cmd');
+    const launcherPath = path.join(this.installDir, 'webhw-bridge.cmd');
     const script = `@echo off
 setlocal
 
@@ -621,16 +621,16 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
     let binaryPath;
 
     if (this.platform === 'win32') {
-      binaryPath = path.join(this.installDir, 'd4ab-bridge.cmd');
+      binaryPath = path.join(this.installDir, 'webhw-bridge.cmd');
     } else if (browser === 'firefox') {
-      binaryPath = path.join(this.installDir, 'd4ab-bridge.sh');
+      binaryPath = path.join(this.installDir, 'webhw-bridge.sh');
     } else {
       binaryPath = path.join(this.installDir, 'src', 'bridge_cli.js');
     }
 
     const manifest = {
-      name: 'com.d4ab.hardware_bridge',
-      description: 'D4AB Hardware Bridge Native Messaging Host',
+      name: 'com.webhw.hardware_bridge',
+      description: 'WebHW Hardware Bridge Native Messaging Host',
       path: binaryPath,
       type: 'stdio'
     };
@@ -647,25 +647,25 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
   }
 
   getChromeExtensionId() {
-    const configuredId = this.cliOptions.chromeExtensionId || process.env.D4AB_CHROME_EXTENSION_ID;
+    const configuredId = this.cliOptions.chromeExtensionId || process.env.WEBHW_CHROME_EXTENSION_ID;
     if (configuredId) {
       return configuredId;
     }
 
     if (this.cliOptions.allowPlaceholderIds) {
       console.warn('⚠️  Chrome extension ID not provided. Using placeholder EXTENSION_ID.');
-      console.warn('   Provide --chrome-extension-id <id> or D4AB_CHROME_EXTENSION_ID env var for a working install.');
+      console.warn('   Provide --chrome-extension-id <id> or WEBHW_CHROME_EXTENSION_ID env var for a working install.');
       return 'EXTENSION_ID';
     }
 
     throw new Error(
-      'Chrome extension ID is required. Provide --chrome-extension-id <id> or set D4AB_CHROME_EXTENSION_ID. ' +
+      'Chrome extension ID is required. Provide --chrome-extension-id <id> or set WEBHW_CHROME_EXTENSION_ID. ' +
       'Use --allow-placeholder-ids only for local scaffolding.'
     );
   }
 
   getFirefoxExtensionId() {
-    const configuredId = this.cliOptions.firefoxExtensionId || process.env.D4AB_FIREFOX_EXTENSION_ID;
+    const configuredId = this.cliOptions.firefoxExtensionId || process.env.WEBHW_FIREFOX_EXTENSION_ID;
     if (configuredId) {
       return configuredId;
     }
@@ -681,8 +681,8 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
       console.warn('⚠️  Could not read Firefox extension ID from frontend/manifest-firefox.json');
     }
 
-    console.warn('⚠️  Firefox extension ID not provided. Using placeholder d4ab-bridge@d4ab.com.');
-    return 'd4ab-bridge@d4ab.com';
+    console.warn('⚠️  Firefox extension ID not provided. Using placeholder webhw-bridge@webhw.dev.');
+    return 'webhw-bridge@webhw.dev';
   }
 
   /**
@@ -697,7 +697,7 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
         fs.mkdirSync(hostDir, { recursive: true });
       }
 
-      const manifestPath = path.join(hostDir, 'com.d4ab.hardware_bridge.json');
+      const manifestPath = path.join(hostDir, 'com.webhw.hardware_bridge.json');
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
       console.log(`✅ Host manifest written to: ${manifestPath}`);
@@ -728,7 +728,7 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
         const baseKey = browser === 'firefox'
           ? 'HKEY_CURRENT_USER\\Software\\Mozilla\\NativeMessagingHosts'
           : 'HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts';
-        const regKey = `${baseKey}\\com.d4ab.hardware_bridge`;
+        const regKey = `${baseKey}\\com.webhw.hardware_bridge`;
 
         try {
           execSync(`reg delete "${regKey}" /f`, { stdio: 'pipe' });
@@ -743,7 +743,7 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
 
     for (const browser of staleBrowsers) {
       for (const hostDir of this.getHostRegistryPaths(browser)) {
-        const manifestPath = path.join(hostDir, 'com.d4ab.hardware_bridge.json');
+        const manifestPath = path.join(hostDir, 'com.webhw.hardware_bridge.json');
         if (fs.existsSync(manifestPath)) {
           fs.unlinkSync(manifestPath);
           console.log(`✅ Removed stale host manifest: ${manifestPath}`);
@@ -760,8 +760,8 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
 
     // For Windows, we need to write to the registry
     const manifestFilename = browser === 'firefox'
-      ? 'com.d4ab.hardware_bridge.firefox.json'
-      : 'com.d4ab.hardware_bridge.chrome.json';
+      ? 'com.webhw.hardware_bridge.firefox.json'
+      : 'com.webhw.hardware_bridge.chrome.json';
     const manifestPath = path.join(this.installDir, manifestFilename);
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
@@ -769,7 +769,7 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
     const baseKey = browser === 'firefox'
       ? 'HKEY_CURRENT_USER\\\\Software\\\\Mozilla\\\\NativeMessagingHosts'
       : 'HKEY_CURRENT_USER\\\\Software\\\\Google\\\\Chrome\\\\NativeMessagingHosts';
-    const regKey = `${baseKey}\\\\com.d4ab.hardware_bridge`;
+    const regKey = `${baseKey}\\\\com.webhw.hardware_bridge`;
 
     try {
       execSync(`reg add "${regKey}" /ve /d "${manifestPath}" /f`, { stdio: 'pipe' });
@@ -838,7 +838,7 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
    * Uninstalls the native messaging host
    */
   async uninstall() {
-    console.log('Uninstalling D4AB Native Messaging Host...');
+    console.log('Uninstalling WebHW Native Messaging Host...');
 
     try {
       // Remove installation directory
@@ -850,8 +850,8 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
       // Remove host registration
       if (this.platform === 'win32') {
         try {
-          execSync('reg delete "HKEY_CURRENT_USER\\\\Software\\\\Google\\\\Chrome\\\\NativeMessagingHosts\\\\com.d4ab.hardware_bridge" /f', { stdio: 'pipe' });
-          execSync('reg delete "HKEY_CURRENT_USER\\\\Software\\\\Mozilla\\\\NativeMessagingHosts\\\\com.d4ab.hardware_bridge" /f', { stdio: 'pipe' });
+          execSync('reg delete "HKEY_CURRENT_USER\\\\Software\\\\Google\\\\Chrome\\\\NativeMessagingHosts\\\\com.webhw.hardware_bridge" /f', { stdio: 'pipe' });
+          execSync('reg delete "HKEY_CURRENT_USER\\\\Software\\\\Mozilla\\\\NativeMessagingHosts\\\\com.webhw.hardware_bridge" /f', { stdio: 'pipe' });
           console.log('✅ Registry entry removed');
         } catch (error) {
           console.warn('⚠️  Could not remove registry entry');
@@ -860,11 +860,11 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
         const manifestPaths = [];
 
         for (const hostDir of this.getHostRegistryPaths('chrome')) {
-          manifestPaths.push(path.join(hostDir, 'com.d4ab.hardware_bridge.json'));
+          manifestPaths.push(path.join(hostDir, 'com.webhw.hardware_bridge.json'));
         }
 
         for (const hostDir of this.getHostRegistryPaths('firefox')) {
-          manifestPaths.push(path.join(hostDir, 'com.d4ab.hardware_bridge.json'));
+          manifestPaths.push(path.join(hostDir, 'com.webhw.hardware_bridge.json'));
         }
 
         for (const manifestPath of [...new Set(manifestPaths)]) {
@@ -904,7 +904,7 @@ if (require.main === module) {
       break;
 
     default:
-      console.log('D4AB Native Messaging Host Installer');
+      console.log('WebHW Native Messaging Host Installer');
       console.log('');
       console.log('Usage:');
       console.log('  node install_native_host.js install     - Install the native messaging host');

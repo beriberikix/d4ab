@@ -40,7 +40,7 @@ export class NativeMessaging {
       );
 
       // Connect to native application
-      this.port = chrome.runtime.connectNative('com.d4ab.hardware_bridge');
+      this.port = chrome.runtime.connectNative('com.webhw.hardware_bridge');
 
       if (!this.port) {
         throw new Error('Failed to connect to native bridge');

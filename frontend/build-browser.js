@@ -46,7 +46,7 @@ function buildForBrowser(browser) {
 function main() {
   const browser = process.argv[2] || 'all';
 
-  console.log('🚀 D4AB Extension Builder');
+  console.log('🚀 WebHW Extension Builder');
 
   if (browser === 'all') {
     buildForBrowser('chrome');

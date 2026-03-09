@@ -424,19 +424,19 @@ export class BrowserAdapter {
   getBrowserConfig() {
     const configs = {
       chrome: {
-        nativeMessagingHostName: 'com.d4ab.hardware_bridge',
+        nativeMessagingHostName: 'com.webhw.hardware_bridge',
         maxNativeMessageSize: 1024 * 1024, // 1MB
         supportsServiceWorker: true,
         supportsOffscreen: true
       },
       firefox: {
-        nativeMessagingHostName: 'com.d4ab.hardware_bridge',
+        nativeMessagingHostName: 'com.webhw.hardware_bridge',
         maxNativeMessageSize: 1024 * 1024, // 1MB
         supportsServiceWorker: false,
         supportsOffscreen: false
       },
       edge: {
-        nativeMessagingHostName: 'com.d4ab.hardware_bridge',
+        nativeMessagingHostName: 'com.webhw.hardware_bridge',
         maxNativeMessageSize: 1024 * 1024, // 1MB
         supportsServiceWorker: true,
         supportsOffscreen: true

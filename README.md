@@ -1,8 +1,8 @@
-# D4AB Hardware Bridge
+# WebHW Hardware Bridge
 
 > **Universal Hardware Access for Web Applications**
 
-Bring USB, Serial, and Bluetooth device support to **Chrome and Firefox** through a powerful browser extension and native bridge combination. D4AB (Device for All Browsers) enables web applications to access local hardware devices on Windows, macOS, and Linux, extending beyond Chromium's native WebUSB/WebSerial support to Firefox and older browsers.
+Bring USB, Serial, and Bluetooth device support to **Chrome and Firefox** through a powerful browser extension and native bridge combination. WebHW (Device for All Browsers) enables web applications to access local hardware devices on Windows, macOS, and Linux, extending beyond Chromium's native WebUSB/WebSerial support to Firefox and older browsers.
 
 ## 🎯 **What This Solves**
 
@@ -199,8 +199,8 @@ npm run package
 
 Packaged browser artifacts are generated under `frontend/dist/extensions/` with browser-specific names:
 
-- `d4ab-hardware-bridge-chrome-<version>.zip`
-- `d4ab-hardware-bridge-firefox-<version>.xpi`
+- `webhw-hardware-bridge-chrome-<version>.zip`
+- `webhw-hardware-bridge-firefox-<version>.xpi`
 
 CI now includes `.github/workflows/ci-extensions.yml`, which builds Chrome and Firefox extension packages on each frontend-related PR/push.
 
@@ -244,7 +244,7 @@ npm run build:all
 Release builds now publish Windows artifacts in two forms:
 
 - `installer-windows-latest-x64.zip` and `installer-windows-latest-arm64.zip`: full Windows installer payload bundles
-- `d4ab-bridge-<version>-windows-x64-installer.exe` and `d4ab-bridge-<version>-windows-arm64-installer.exe`: direct installer executables (NSIS or Inno) for winget
+- `webhw-bridge-<version>-windows-x64-installer.exe` and `webhw-bridge-<version>-windows-arm64-installer.exe`: direct installer executables (NSIS or Inno) for winget
 
 The release workflow also generates winget manifest files (`version`, `defaultLocale`, `installer`) under `release-bundles/winget/` so they can be submitted to `microsoft/winget-pkgs`.
 
@@ -255,29 +255,29 @@ The release workflow also generates winget manifest files (`version`, `defaultLo
 node installer/build_installer.js --target brew
 
 # 2) Add a local tap and copy formula into it (required by recent Homebrew)
-brew tap-new d4ab/local --no-git
-mkdir -p "$(brew --repo d4ab/local)/Formula"
-cp ./dist/homebrew/Formula/d4ab-hardware-bridge.rb "$(brew --repo d4ab/local)/Formula/d4ab-hardware-bridge.rb"
+brew tap-new webhw/local --no-git
+mkdir -p "$(brew --repo webhw/local)/Formula"
+cp ./dist/homebrew/Formula/webhw-hardware-bridge.rb "$(brew --repo webhw/local)/Formula/webhw-hardware-bridge.rb"
 
 # 3) Install with Homebrew (Node.js is required automatically via formula dependency)
-brew install --build-from-source d4ab/local/d4ab-hardware-bridge
+brew install --build-from-source webhw/local/webhw-hardware-bridge
 
 # 4) Register native messaging host (interactive picker)
-d4ab-install-native-host install
+webhw-install-native-host install
 
 # Non-interactive default behavior:
 # - Firefox selected by default if detected
 # - Chrome detected but disabled by default
-d4ab-install-native-host install --non-interactive
+webhw-install-native-host install --non-interactive
 
 # Keep stale host manifests cleaned up when browser selection changes (default)
-d4ab-install-native-host install --cleanup-stale-manifests
+webhw-install-native-host install --cleanup-stale-manifests
 
 # Open browser extension setup pages after install (off by default in non-interactive mode)
-d4ab-install-native-host install --open-guidance
+webhw-install-native-host install --open-guidance
 
 # Explicitly enable both Firefox and Chrome
-d4ab-install-native-host install --browsers firefox,chrome
+webhw-install-native-host install --browsers firefox,chrome
 ```
 
 One-command local smoke test on macOS:
@@ -354,7 +354,7 @@ npm --prefix frontend run test:ci
 The CI-safe subset intentionally excludes browser/hardware-heavy suites (`frontend/tests/integration`, `frontend/tests/e2e`, and `frontend/tests/performance`) in the first CI phase.
 
 GitHub Actions workflows currently included:
-- `.github/workflows/ci-tests.yml`: runs production dependency audit (`npm audit --omit=dev`) and the CI-safe test subset on Node 18.x and 20.x for pull requests and pushes to `main` (default audit threshold: `critical`, configurable via `D4AB_AUDIT_LEVEL`).
+- `.github/workflows/ci-tests.yml`: runs production dependency audit (`npm audit --omit=dev`) and the CI-safe test subset on Node 18.x and 20.x for pull requests and pushes to `main` (default audit threshold: `critical`, configurable via `WEBHW_AUDIT_LEVEL`).
 - `.github/workflows/ci-installers.yml`: builds installer artifacts on Linux/macOS/Windows, plus Homebrew artifacts on Linux/macOS, and uploads them as workflow artifacts (no marketplace publishing yet).
 
 ### Test with Real Hardware
@@ -377,13 +377,13 @@ navigator.serial.requestPort()
 
 ### Native Bridge Configuration
 
-The bridge can be configured via `~/.d4ab/config.json`:
+The bridge can be configured via `~/.webhw/config.json`:
 
 ```json
 {
   "logging": {
     "level": "info",
-    "file": "~/.d4ab/logs/bridge.log"
+    "file": "~/.webhw/logs/bridge.log"
   },
   "hardware": {
     "maxConnections": 10,
@@ -402,13 +402,13 @@ The bridge can be configured via `~/.d4ab/config.json`:
 
 ```bash
 # Debug logging
-export D4AB_LOG_LEVEL=debug
+export WEBHW_LOG_LEVEL=debug
 
 # Disable specific hardware types
-export D4AB_DISABLE_BLUETOOTH=true
+export WEBHW_DISABLE_BLUETOOTH=true
 
 # Performance tuning
-export D4AB_MAX_CONNECTIONS=5
+export WEBHW_MAX_CONNECTIONS=5
 ```
 
 ## 🔒 **Security Features**
@@ -454,7 +454,7 @@ node backend/src/bridge_cli.js --version
 echo '{"jsonrpc":"2.0","method":"heartbeat","id":1}' | node backend/src/bridge_cli.js
 
 # Check logs
-tail -f ~/.d4ab/logs/bridge.log
+tail -f ~/.webhw/logs/bridge.log
 ```
 
 **"Device access denied"**
@@ -471,7 +471,7 @@ cd backend
 node src/bridge_cli.js --debug --log-level trace
 
 # Enable extension debug logging in browser console
-localStorage.setItem('d4ab-debug', 'true');
+localStorage.setItem('webhw-debug', 'true');
 ```
 
 ## 📚 **Documentation**
@@ -539,4 +539,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Ready to bridge the gap between web and hardware?** 🌉
 
-For support, visit [GitHub Issues](https://github.com/beriberikix/webhw/issues) or join our [Discord community](https://discord.gg/d4ab).
+For support, visit [GitHub Issues](https://github.com/beriberikix/webhw/issues) or join our [Discord community](https://discord.gg/webhw).

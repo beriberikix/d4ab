@@ -72,11 +72,11 @@ jobs:
         shell: powershell
         run: |
           $installer = Get-ChildItem -Path dist -Recurse -File |
-            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-(x64|arm64)-(installer|inno)\.exe$' } |
+            Where-Object { $_.Name -match '^webhw-bridge-.*-windows-(x64|arm64)-(installer|inno)\.exe$' } |
             Select-Object -First 1
 
           if (-not $installer) {
-            throw 'No Windows installer executable was produced. Winget publish flow requires d4ab-bridge-<version>-windows-<arch>-(installer|inno).exe.'
+            throw 'No Windows installer executable was produced. Winget publish flow requires webhw-bridge-<version>-windows-<arch>-(installer|inno).exe.'
           }
 
           Write-Host "Found Windows installer: $($installer.FullName)"

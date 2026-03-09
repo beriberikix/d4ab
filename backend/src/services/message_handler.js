@@ -29,14 +29,14 @@ class MessageHandler {
 
     this.initialized = false;
     this.startTime = new Date();
-    this.maxConcurrentConnections = Number(process.env.D4AB_MAX_CONNECTIONS || DEFAULT_MAX_CONCURRENT_CONNECTIONS);
-    this.minReadLength = Number(process.env.D4AB_MIN_READ_LENGTH || DEFAULT_MIN_READ_LENGTH);
-    this.maxReadLength = Number(process.env.D4AB_MAX_READ_LENGTH || DEFAULT_MAX_READ_LENGTH);
-    this.defaultIoTimeoutMs = Number(process.env.D4AB_IO_TIMEOUT_MS || DEFAULT_IO_TIMEOUT_MS);
-    this.maxWriteBytes = Number(process.env.D4AB_MAX_WRITE_BYTES || DEFAULT_MAX_WRITE_BYTES);
-    this.rateLimitWindowMs = Number(process.env.D4AB_RATE_LIMIT_WINDOW_MS || DEFAULT_RATE_LIMIT_WINDOW_MS);
-    this.rateLimitMaxRequests = Number(process.env.D4AB_RATE_LIMIT_MAX_REQUESTS || DEFAULT_RATE_LIMIT_MAX_REQUESTS);
-    this.maxJsonBytes = Number(process.env.D4AB_MAX_JSON_BYTES || DEFAULT_MAX_JSON_BYTES);
+    this.maxConcurrentConnections = Number(process.env.WEBHW_MAX_CONNECTIONS || DEFAULT_MAX_CONCURRENT_CONNECTIONS);
+    this.minReadLength = Number(process.env.WEBHW_MIN_READ_LENGTH || DEFAULT_MIN_READ_LENGTH);
+    this.maxReadLength = Number(process.env.WEBHW_MAX_READ_LENGTH || DEFAULT_MAX_READ_LENGTH);
+    this.defaultIoTimeoutMs = Number(process.env.WEBHW_IO_TIMEOUT_MS || DEFAULT_IO_TIMEOUT_MS);
+    this.maxWriteBytes = Number(process.env.WEBHW_MAX_WRITE_BYTES || DEFAULT_MAX_WRITE_BYTES);
+    this.rateLimitWindowMs = Number(process.env.WEBHW_RATE_LIMIT_WINDOW_MS || DEFAULT_RATE_LIMIT_WINDOW_MS);
+    this.rateLimitMaxRequests = Number(process.env.WEBHW_RATE_LIMIT_MAX_REQUESTS || DEFAULT_RATE_LIMIT_MAX_REQUESTS);
+    this.maxJsonBytes = Number(process.env.WEBHW_MAX_JSON_BYTES || DEFAULT_MAX_JSON_BYTES);
     this.requestRateLimit = new Map();
   }
 

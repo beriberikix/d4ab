@@ -16,11 +16,11 @@ const version = packageJson.version;
 const browsers = {
   chrome: {
     ext: 'zip',
-    outputName: `d4ab-hardware-bridge-chrome-${version}.zip`
+    outputName: `webhw-hardware-bridge-chrome-${version}.zip`
   },
   firefox: {
     ext: 'xpi',
-    outputName: `d4ab-hardware-bridge-firefox-${version}.xpi`
+    outputName: `webhw-hardware-bridge-firefox-${version}.xpi`
   }
 };
 

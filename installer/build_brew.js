@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * D4AB Homebrew Builder
+ * WebHW Homebrew Builder
  * Generates local Homebrew formula and source tarball for macOS/Linux installs.
  */
 
@@ -18,10 +18,10 @@ class BrewBuilder {
     this.version = options.version || this.getVersion();
     this.outputDir = path.join(this.buildDir, 'homebrew');
     this.formulaDir = path.join(this.outputDir, 'Formula');
-    this.stageName = `d4ab-hardware-bridge-${this.version}`;
+    this.stageName = `webhw-hardware-bridge-${this.version}`;
     this.stageDir = path.join(this.outputDir, this.stageName);
     this.tarballPath = path.join(this.outputDir, `${this.stageName}.tar.gz`);
-    this.formulaPath = path.join(this.formulaDir, 'd4ab-hardware-bridge.rb');
+    this.formulaPath = path.join(this.formulaDir, 'webhw-hardware-bridge.rb');
   }
 
   getVersion() {
@@ -48,11 +48,11 @@ class BrewBuilder {
     console.log(`   • Formula: ${this.formulaPath}`);
     console.log('');
     console.log('Next steps:');
-    console.log('  brew tap-new d4ab/local --no-git  # one-time setup');
-    console.log('  mkdir -p "$(brew --repo d4ab/local)/Formula"');
-    console.log(`  cp "${this.formulaPath}" "$(brew --repo d4ab/local)/Formula/d4ab-hardware-bridge.rb"`);
-    console.log('  brew reinstall --build-from-source d4ab/local/d4ab-hardware-bridge || brew install --build-from-source d4ab/local/d4ab-hardware-bridge');
-    console.log('  d4ab-install-native-host install');
+    console.log('  brew tap-new webhw/local --no-git  # one-time setup');
+    console.log('  mkdir -p "$(brew --repo webhw/local)/Formula"');
+    console.log(`  cp "${this.formulaPath}" "$(brew --repo webhw/local)/Formula/webhw-hardware-bridge.rb"`);
+    console.log('  brew reinstall --build-from-source webhw/local/webhw-hardware-bridge || brew install --build-from-source webhw/local/webhw-hardware-bridge');
+    console.log('  webhw-install-native-host install');
   }
 
   async prepareDirectories() {
@@ -101,8 +101,8 @@ class BrewBuilder {
 
   async writeFormula(sha256) {
     const url = `file://${this.tarballPath}`;
-    const formula = `class D4abHardwareBridge < Formula
-  desc "Native hardware bridge for D4AB browser extension"
+    const formula = `class WebhwHardwareBridge < Formula
+  desc "Native hardware bridge for WebHW browser extension"
   homepage "https://github.com/beriberikix/webhw"
   url "${url}"
   sha256 "${sha256}"
@@ -116,21 +116,21 @@ class BrewBuilder {
     chmod 0755, libexec/"installer/install_native_host.js"
     chmod 0755, libexec/"backend/src/bridge_cli.js"
 
-    (bin/"d4ab-install-native-host").write_env_script(libexec/"installer/install_native_host.js", {})
-    (bin/"d4ab-bridge").write_env_script(libexec/"backend/src/bridge_cli.js", {})
+    (bin/"webhw-install-native-host").write_env_script(libexec/"installer/install_native_host.js", {})
+    (bin/"webhw-bridge").write_env_script(libexec/"backend/src/bridge_cli.js", {})
   end
 
   def caveats
     <<~EOS
       Run browser registration after install:
-        d4ab-install-native-host install
+        webhw-install-native-host install
 
       Browser selection defaults:
       - Firefox is selected by default if detected.
       - Chrome is detected but disabled by default.
 
       To explicitly enable Chrome:
-        d4ab-install-native-host install --browsers firefox,chrome
+        webhw-install-native-host install --browsers firefox,chrome
     EOS
   end
 end

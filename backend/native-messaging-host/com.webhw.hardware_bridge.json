@@ -1,0 +1,10 @@
+{
+  "name": "com.webhw.hardware_bridge",
+  "description": "WebHW Hardware Bridge Native Messaging Host",
+  "path": "INSTALL_DIR/webhw_bridge",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://EXTENSION_ID/",
+    "moz-extension://EXTENSION_ID/"
+  ]
+}

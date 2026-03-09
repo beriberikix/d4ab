@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  D4AB_AUDIT_LEVEL: critical
+  WEBHW_AUDIT_LEVEL: critical
 
 jobs:
   version-consistency:
@@ -74,7 +74,7 @@ jobs:
         run: npm ci
 
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level="${D4AB_AUDIT_LEVEL}"
+        run: npm audit --omit=dev --audit-level="${WEBHW_AUDIT_LEVEL}"
 
       - name: Run CI-safe tests
         run: npm run test:ci
@@ -108,7 +108,7 @@ jobs:
         run: npm ci
 
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level="${D4AB_AUDIT_LEVEL}"
+        run: npm audit --omit=dev --audit-level="${WEBHW_AUDIT_LEVEL}"
 
       - name: Run CI-safe tests
         run: npm run test:ci
@@ -150,11 +150,11 @@ jobs:
         shell: powershell
         run: |
           $installer = Get-ChildItem -Path dist -Recurse -File |
-            Where-Object { $_.Name -match '^d4ab-bridge-.*-windows-(x64|arm64)-(installer|inno)\.exe$' } |
+            Where-Object { $_.Name -match '^webhw-bridge-.*-windows-(x64|arm64)-(installer|inno)\.exe$' } |
             Select-Object -First 1
 
           if (-not $installer) {
-            throw 'No Windows installer executable was produced. Winget publish flow requires d4ab-bridge-<version>-windows-<arch>-(installer|inno).exe.'
+            throw 'No Windows installer executable was produced. Winget publish flow requires webhw-bridge-<version>-windows-<arch>-(installer|inno).exe.'
           }
 
           Write-Host "Found Windows installer: $($installer.FullName)"
@@ -332,7 +332,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          package_identifier="D4AB.HardwareBridge"
+          package_identifier="WebHW.HardwareBridge"
           package_version="${GITHUB_REF_NAME#v}"
           installer_index="release-bundles/windows-installers-index.txt"
 
@@ -392,8 +392,8 @@ jobs:
           PackageIdentifier: ${package_identifier}
           PackageVersion: ${package_version}
           PackageLocale: en-US
-          Publisher: D4AB Project
-          PackageName: D4AB Hardware Bridge
+          Publisher: WebHW Project
+          PackageName: WebHW Hardware Bridge
           License: MIT
           ShortDescription: Hardware access bridge for web applications.
           Homepage: https://github.com/${GITHUB_REPOSITORY}

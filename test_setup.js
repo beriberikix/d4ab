@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * D4AB End-to-End Test Setup
+ * WebHW End-to-End Test Setup
  * Tests the complete system: extension + native bridge + device enumeration
  */
 
@@ -9,7 +9,7 @@ const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-class D4ABTestSetup {
+class WebHWTestSetup {
   constructor() {
     this.testResults = {
       dependencies: false,
@@ -23,7 +23,7 @@ class D4ABTestSetup {
    * Runs complete system test
    */
   async runTests() {
-    console.log('🧪 D4AB Hardware Bridge - End-to-End Test');
+    console.log('🧪 WebHW Hardware Bridge - End-to-End Test');
     console.log('=' .repeat(50));
 
     try {
@@ -298,8 +298,8 @@ class D4ABTestSetup {
 
 // Run tests if called directly
 if (require.main === module) {
-  const tester = new D4ABTestSetup();
+  const tester = new WebHWTestSetup();
   tester.runTests();
 }
 
-module.exports = D4ABTestSetup;
+module.exports = WebHWTestSetup;

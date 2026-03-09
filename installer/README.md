@@ -1,4 +1,4 @@
-# D4AB Installer Contract
+# WebHW Installer Contract
 
 This document defines installer behavior for local development builds across macOS, Linux, and Windows.
 
@@ -38,29 +38,29 @@ Options:
 
 macOS:
 
-- Firefox: `~/Library/Application Support/Mozilla/NativeMessagingHosts/com.d4ab.hardware_bridge.json`
-- Chrome: `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.d4ab.hardware_bridge.json`
+- Firefox: `~/Library/Application Support/Mozilla/NativeMessagingHosts/com.webhw.hardware_bridge.json`
+- Chrome: `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.webhw.hardware_bridge.json`
 
 Linux:
 
-- Firefox: `~/.mozilla/native-messaging-hosts/com.d4ab.hardware_bridge.json`
+- Firefox: `~/.mozilla/native-messaging-hosts/com.webhw.hardware_bridge.json`
 - Chromium-family candidates:
-  - `~/.config/google-chrome/NativeMessagingHosts/com.d4ab.hardware_bridge.json`
-  - `~/.config/chromium/NativeMessagingHosts/com.d4ab.hardware_bridge.json`
-  - `~/.config/chromium-browser/NativeMessagingHosts/com.d4ab.hardware_bridge.json`
+  - `~/.config/google-chrome/NativeMessagingHosts/com.webhw.hardware_bridge.json`
+  - `~/.config/chromium/NativeMessagingHosts/com.webhw.hardware_bridge.json`
+  - `~/.config/chromium-browser/NativeMessagingHosts/com.webhw.hardware_bridge.json`
 
 Windows:
 
 - Firefox registry key:
-  - `HKCU\\Software\\Mozilla\\NativeMessagingHosts\\com.d4ab.hardware_bridge`
+  - `HKCU\\Software\\Mozilla\\NativeMessagingHosts\\com.webhw.hardware_bridge`
 - Chrome registry key:
-  - `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.d4ab.hardware_bridge`
+  - `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.webhw.hardware_bridge`
 
 ## Build Artifacts
 
 - Homebrew artifacts: `dist/homebrew/`
 - Windows installer scaffold output: `dist/win32-x64/installer.iss`
-- Windows package archive: `dist/d4ab-bridge-<version>-windows.zip`
+- Windows package archive: `dist/webhw-bridge-<version>-windows.zip`
 
 ## Local Smoke Commands
 

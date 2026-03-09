@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * D4AB Hardware Bridge - Cross-Platform Installer Builder
+ * WebHW Hardware Bridge - Cross-Platform Installer Builder
  * Creates platform-specific installers for the hardware bridge
  */
 
@@ -21,11 +21,11 @@ class InstallerBuilder {
     this.target = null;
 
     this.config = {
-      name: 'D4AB Hardware Bridge',
-      identifier: 'com.d4ab.hardware-bridge',
+      name: 'WebHW Hardware Bridge',
+      identifier: 'com.webhw.hardware-bridge',
       description: 'Hardware access bridge for web applications',
-      author: 'D4AB Project',
-      homepage: 'https://d4ab.dev',
+      author: 'WebHW Project',
+      homepage: 'https://webhw.dev',
       license: 'MIT',
       category: 'Developer Tools'
     };
@@ -323,11 +323,11 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={localappdata}\\D4AB
+DefaultDirName={localappdata}\\WebHW
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=.
-OutputBaseFilename=d4ab-bridge-{#MyAppVersion}-windows-${this.arch}-inno
+OutputBaseFilename=webhw-bridge-{#MyAppVersion}-windows-${this.arch}-inno
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=${innoArchitectureMode}
@@ -465,7 +465,7 @@ end;
 
     // Create launcher script
     const launcherScript = await this.generateMacLauncherScript();
-    const launcherPath = path.join(macOSDir, 'd4ab-bridge');
+    const launcherPath = path.join(macOSDir, 'webhw-bridge');
     await fs.writeFile(launcherPath, launcherScript);
     await fs.chmod(launcherPath, '755');
 
@@ -487,7 +487,7 @@ end;
 
     // Try to create DMG if hdiutil is available
     try {
-      const dmgPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-macos-${this.arch}.dmg`);
+      const dmgPath = path.join(this.buildDir, `webhw-bridge-${this.version}-macos-${this.arch}.dmg`);
       this.execCommand(`hdiutil create -srcfolder "${this.platformDir}" "${dmgPath}"`, this.platformDir);
       console.log('✅ DMG installer created');
     } catch (error) {
@@ -505,7 +505,7 @@ end;
     // Create directory structure
     const debDir = path.join(this.platformDir, 'deb');
     const debianDir = path.join(debDir, 'DEBIAN');
-    const optDir = path.join(debDir, 'opt', 'd4ab-bridge');
+    const optDir = path.join(debDir, 'opt', 'webhw-bridge');
     const binDir = path.join(debDir, 'usr', 'bin');
     const desktopDir = path.join(debDir, 'usr', 'share', 'applications');
 
@@ -540,17 +540,17 @@ end;
     );
 
     // Create binary symlink script
-    const binScript = `#!/bin/bash\nnode /opt/d4ab-bridge/backend/src/bridge_cli.js "$@"\n`;
-    await fs.writeFile(path.join(binDir, 'd4ab-bridge'), binScript);
-    await fs.chmod(path.join(binDir, 'd4ab-bridge'), '755');
+    const binScript = `#!/bin/bash\nnode /opt/webhw-bridge/backend/src/bridge_cli.js "$@"\n`;
+    await fs.writeFile(path.join(binDir, 'webhw-bridge'), binScript);
+    await fs.chmod(path.join(binDir, 'webhw-bridge'), '755');
 
     // Create desktop entry
     const desktopEntry = await this.generateDesktopEntry();
-    await fs.writeFile(path.join(desktopDir, 'd4ab-bridge.desktop'), desktopEntry);
+    await fs.writeFile(path.join(desktopDir, 'webhw-bridge.desktop'), desktopEntry);
 
     // Try to build DEB package
     try {
-      const debPackage = path.join(this.buildDir, `d4ab-bridge_${this.version}_${this.arch}.deb`);
+      const debPackage = path.join(this.buildDir, `webhw-bridge_${this.version}_${this.arch}.deb`);
       this.execCommand(`dpkg-deb --build "${debDir}" "${debPackage}"`, this.platformDir);
       console.log('✅ DEB package created');
     } catch (error) {
@@ -576,8 +576,8 @@ end;
 !define APPIDENTIFIER "${this.config.identifier}"
 
 Name "\${APPNAME}"
-OutFile "d4ab-bridge-\${APPVERSION}-windows-${this.arch}-installer.exe"
-InstallDir "$PROGRAMFILES64\\D4AB Hardware Bridge"
+OutFile "webhw-bridge-\${APPVERSION}-windows-${this.arch}-installer.exe"
+InstallDir "$PROGRAMFILES64\\WebHW Hardware Bridge"
 
 Page directory
 Page instfiles
@@ -591,9 +591,9 @@ Section "Install"
   WriteUninstaller "$INSTDIR\\uninstall.exe"
 
   ; Add to Add/Remove Programs
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\D4ABBridge" "DisplayName" "\${APPNAME}"
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\D4ABBridge" "UninstallString" "$INSTDIR\\uninstall.exe"
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\D4ABBridge" "DisplayVersion" "\${APPVERSION}"
+  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WebHWBridge" "DisplayName" "\${APPNAME}"
+  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WebHWBridge" "UninstallString" "$INSTDIR\\uninstall.exe"
+  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WebHWBridge" "DisplayVersion" "\${APPVERSION}"
 
   ; Register native messaging host
   ExecWait '"$INSTDIR\\backend\\src\\bridge_cli.js" install-host'
@@ -607,7 +607,7 @@ Section "Uninstall"
   RMDir /r "$INSTDIR"
 
   ; Remove registry entries
-  DeleteRegKey HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\D4ABBridge"
+  DeleteRegKey HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WebHWBridge"
 SectionEnd
 `;
   }
@@ -617,7 +617,7 @@ SectionEnd
    */
   async generateWindowsBatchScript() {
     return `@echo off
-echo Installing D4AB Hardware Bridge...
+echo Installing WebHW Hardware Bridge...
 
 REM Check for Node.js
 node --version >nul 2>&1
@@ -629,24 +629,24 @@ if errorlevel 1 (
 )
 
 REM Create installation directory
-if not exist "%PROGRAMFILES%\\D4AB Hardware Bridge" mkdir "%PROGRAMFILES%\\D4AB Hardware Bridge"
+if not exist "%PROGRAMFILES%\\WebHW Hardware Bridge" mkdir "%PROGRAMFILES%\\WebHW Hardware Bridge"
 
 REM Copy files
-xcopy /s /y backend "%PROGRAMFILES%\\D4AB Hardware Bridge\\backend\\"
-xcopy /s /y frontend "%PROGRAMFILES%\\D4AB Hardware Bridge\\frontend\\"
+xcopy /s /y backend "%PROGRAMFILES%\\WebHW Hardware Bridge\\backend\\"
+xcopy /s /y frontend "%PROGRAMFILES%\\WebHW Hardware Bridge\\frontend\\"
 
 REM Install dependencies
-cd "%PROGRAMFILES%\\D4AB Hardware Bridge\\backend"
+cd "%PROGRAMFILES%\\WebHW Hardware Bridge\\backend"
 npm install --production
 
 REM Register native messaging host
 node src\\bridge_cli.js install-host
 
 REM Add to PATH
-setx PATH "%PATH%;%PROGRAMFILES%\\D4AB Hardware Bridge\\backend\\src" /M
+setx PATH "%PATH%;%PROGRAMFILES%\\WebHW Hardware Bridge\\backend\\src" /M
 
 echo Installation completed!
-echo You can now use 'd4ab-bridge' command from any terminal.
+echo You can now use 'webhw-bridge' command from any terminal.
 pause
 `;
   }
@@ -656,8 +656,8 @@ pause
    */
   async generatePowerShellScript() {
     return `
-# D4AB Hardware Bridge PowerShell Installer
-Write-Host "Installing D4AB Hardware Bridge..." -ForegroundColor Green
+# WebHW Hardware Bridge PowerShell Installer
+Write-Host "Installing WebHW Hardware Bridge..." -ForegroundColor Green
 
 # Check for Node.js
 try {
@@ -678,7 +678,7 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-$installPath = "$env:ProgramFiles\\D4AB Hardware Bridge"
+$installPath = "$env:ProgramFiles\\WebHW Hardware Bridge"
 
 # Create installation directory
 New-Item -ItemType Directory -Force -Path $installPath
@@ -700,7 +700,7 @@ $newPath = "$currentPath;$installPath\\backend\\src"
 [Environment]::SetEnvironmentVariable("PATH", $newPath, "Machine")
 
 Write-Host "Installation completed successfully!" -ForegroundColor Green
-Write-Host "You can now use 'd4ab-bridge' command from any terminal." -ForegroundColor Yellow
+Write-Host "You can now use 'webhw-bridge' command from any terminal." -ForegroundColor Yellow
 Write-Host "Please restart your terminal for PATH changes to take effect." -ForegroundColor Yellow
 Read-Host "Press Enter to exit"
 `;
@@ -715,7 +715,7 @@ Read-Host "Press Enter to exit"
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>d4ab-bridge</string>
+    <string>webhw-bridge</string>
     <key>CFBundleIdentifier</key>
     <string>${this.config.identifier}</string>
     <key>CFBundleName</key>
@@ -727,7 +727,7 @@ Read-Host "Press Enter to exit"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
-    <string>D4AB</string>
+    <string>WebHW</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.14</string>
     <key>LSUIElement</key>
@@ -755,7 +755,7 @@ node "$RESOURCES_DIR/backend/src/bridge_cli.js" "$@"
     return `#!/bin/bash
 set -e
 
-echo "Installing D4AB Hardware Bridge..."
+echo "Installing WebHW Hardware Bridge..."
 
 # Check for Node.js
 if ! command -v node &> /dev/null; then
@@ -770,7 +770,7 @@ if [[ $EUID -eq 0 ]]; then
    exit 1
 fi
 
-INSTALL_DIR="/Applications/D4AB Hardware Bridge.app"
+INSTALL_DIR="/Applications/WebHW Hardware Bridge.app"
 
 # Remove existing installation
 if [ -d "$INSTALL_DIR" ]; then
@@ -780,7 +780,7 @@ fi
 
 # Copy application
 echo "Installing to $INSTALL_DIR..."
-cp -R "D4AB Hardware Bridge.app" "/Applications/"
+cp -R "WebHW Hardware Bridge.app" "/Applications/"
 
 # Install dependencies
 cd "$INSTALL_DIR/Contents/Resources/backend"
@@ -790,10 +790,10 @@ npm install --production
 node src/bridge_cli.js install-host
 
 # Create command line symlink
-sudo ln -sf "$INSTALL_DIR/Contents/MacOS/d4ab-bridge" "/usr/local/bin/d4ab-bridge"
+sudo ln -sf "$INSTALL_DIR/Contents/MacOS/webhw-bridge" "/usr/local/bin/webhw-bridge"
 
 echo "Installation completed successfully!"
-echo "You can now use 'd4ab-bridge' command from Terminal."
+echo "You can now use 'webhw-bridge' command from Terminal."
 `;
   }
 
@@ -801,7 +801,7 @@ echo "You can now use 'd4ab-bridge' command from Terminal."
    * Generates Debian control file
    */
   async generateDebianControl() {
-    return `Package: d4ab-bridge
+    return `Package: webhw-bridge
 Version: ${this.version}
 Section: devel
 Priority: optional
@@ -809,7 +809,7 @@ Architecture: ${this.arch === 'x64' ? 'amd64' : this.arch}
 Depends: nodejs (>= 18.0.0)
 Maintainer: ${this.config.author}
 Description: ${this.config.description}
- D4AB Hardware Bridge enables web applications to access local hardware
+ WebHW Hardware Bridge enables web applications to access local hardware
  devices including USB, Serial, and Bluetooth devices through a browser
  extension and native bridge application.
 Homepage: ${this.config.homepage}
@@ -824,7 +824,7 @@ Homepage: ${this.config.homepage}
 set -e
 
 # Install Node.js dependencies
-cd /opt/d4ab-bridge/backend
+cd /opt/webhw-bridge/backend
 npm install --production
 
 # Register native messaging host
@@ -832,16 +832,16 @@ node src/bridge_cli.js install-host
 
 # Create systemd service if systemd is available
 if command -v systemctl &> /dev/null; then
-    cat > /etc/systemd/system/d4ab-bridge.service << EOF
+    cat > /etc/systemd/system/webhw-bridge.service << EOF
 [Unit]
-Description=D4AB Hardware Bridge
+Description=WebHW Hardware Bridge
 After=network.target
 
 [Service]
 Type=simple
-User=d4ab
-Group=d4ab
-WorkingDirectory=/opt/d4ab-bridge/backend
+User=webhw
+Group=webhw
+WorkingDirectory=/opt/webhw-bridge/backend
 ExecStart=/usr/bin/node src/bridge_cli.js
 Restart=always
 RestartSec=10
@@ -851,10 +851,10 @@ WantedBy=multi-user.target
 EOF
 
     systemctl daemon-reload
-    systemctl enable d4ab-bridge
+    systemctl enable webhw-bridge
 fi
 
-echo "D4AB Hardware Bridge installed successfully!"
+echo "WebHW Hardware Bridge installed successfully!"
 `;
   }
 
@@ -867,12 +867,12 @@ set -e
 
 # Stop and disable service if running
 if command -v systemctl &> /dev/null; then
-    systemctl stop d4ab-bridge || true
-    systemctl disable d4ab-bridge || true
+    systemctl stop webhw-bridge || true
+    systemctl disable webhw-bridge || true
 fi
 
 # Unregister native messaging host
-cd /opt/d4ab-bridge/backend
+cd /opt/webhw-bridge/backend
 node src/bridge_cli.js uninstall-host || true
 `;
   }
@@ -886,8 +886,8 @@ Version=1.0
 Type=Application
 Name=${this.config.name}
 Comment=${this.config.description}
-Exec=d4ab-bridge
-Icon=d4ab-bridge
+Exec=webhw-bridge
+Icon=webhw-bridge
 Terminal=true
 Categories=${this.config.category};
 `;
@@ -900,7 +900,7 @@ Categories=${this.config.category};
     return `#!/bin/bash
 set -e
 
-echo "Installing D4AB Hardware Bridge..."
+echo "Installing WebHW Hardware Bridge..."
 
 # Check for Node.js
 if ! command -v node &> /dev/null; then
@@ -928,25 +928,25 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Create installation directory
-mkdir -p /opt/d4ab-bridge
+mkdir -p /opt/webhw-bridge
 
 # Copy files
-cp -r backend /opt/d4ab-bridge/
-cp -r frontend /opt/d4ab-bridge/
+cp -r backend /opt/webhw-bridge/
+cp -r frontend /opt/webhw-bridge/
 
 # Install dependencies
-cd /opt/d4ab-bridge/backend
+cd /opt/webhw-bridge/backend
 npm install --production
 
 # Create binary symlink
-ln -sf /opt/d4ab-bridge/backend/src/bridge_cli.js /usr/local/bin/d4ab-bridge
-chmod +x /usr/local/bin/d4ab-bridge
+ln -sf /opt/webhw-bridge/backend/src/bridge_cli.js /usr/local/bin/webhw-bridge
+chmod +x /usr/local/bin/webhw-bridge
 
 # Register native messaging host
-/usr/local/bin/d4ab-bridge install-host
+/usr/local/bin/webhw-bridge install-host
 
 echo "Installation completed successfully!"
-echo "You can now use 'd4ab-bridge' command from any terminal."
+echo "You can now use 'webhw-bridge' command from any terminal."
 `;
   }
 
@@ -954,7 +954,7 @@ echo "You can now use 'd4ab-bridge' command from any terminal."
    * Creates ZIP package
    */
   async createZipPackage(platform) {
-    const zipPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-${platform}-${this.arch}.zip`);
+    const zipPath = path.join(this.buildDir, `webhw-bridge-${this.version}-${platform}-${this.arch}.zip`);
 
     try {
       this.execCommand(`cd "${this.platformDir}" && zip -r "${zipPath}" .`, this.platformDir);
@@ -968,7 +968,7 @@ echo "You can now use 'd4ab-bridge' command from any terminal."
    * Creates TAR package
    */
   async createTarPackage(platform) {
-    const tarPath = path.join(this.buildDir, `d4ab-bridge-${this.version}-${platform}-${this.arch}.tar.gz`);
+    const tarPath = path.join(this.buildDir, `webhw-bridge-${this.version}-${platform}-${this.arch}.tar.gz`);
 
     try {
       this.execCommand(`tar -czf "${tarPath}" -C "${this.platformDir}" .`, this.platformDir);
@@ -1084,7 +1084,7 @@ if (require.main === module) {
     const arg = args[i];
     if (arg === '--help' || arg === '-h') {
       console.log(`
-D4AB Hardware Bridge Installer Builder
+WebHW Hardware Bridge Installer Builder
 
 Usage: node build_installer.js [options]
 

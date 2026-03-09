@@ -1,8 +1,8 @@
-# D4AB Hardware Bridge - Extension API Documentation
+# WebHW Hardware Bridge - Extension API Documentation
 
 ## Overview
 
-The D4AB Hardware Bridge Extension provides Web USB, Serial, and Bluetooth API polyfills for browsers that don't natively support these APIs, enabling universal hardware access across Chrome, Firefox, and Edge.
+The WebHW Hardware Bridge Extension provides Web USB, Serial, and Bluetooth API polyfills for browsers that don't natively support these APIs, enabling universal hardware access across Chrome, Firefox, and Edge.
 
 ## Architecture
 
@@ -402,10 +402,10 @@ All device access requests are validated against the requesting origin:
 
 ```bash
 # View bridge logs
-tail -f ~/.d4ab/logs/bridge.log
+tail -f ~/.webhw/logs/bridge.log
 
 # Debug mode
-d4ab-bridge --debug --log-level debug
+webhw-bridge --debug --log-level debug
 ```
 
 ### Common Issues
@@ -544,7 +544,7 @@ Create test HTML files to verify functionality:
 <!DOCTYPE html>
 <html>
 <head>
-    <title>D4AB Test Page</title>
+    <title>WebHW Test Page</title>
 </head>
 <body>
     <h1>Hardware Access Test</h1>

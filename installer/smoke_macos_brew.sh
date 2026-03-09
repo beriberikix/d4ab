@@ -19,33 +19,33 @@ cd "$REPO_ROOT"
 echo "[1/5] Building local Homebrew artifacts..."
 node installer/build_installer.js --target brew
 
-FORMULA_PATH="$REPO_ROOT/dist/homebrew/Formula/d4ab-hardware-bridge.rb"
+FORMULA_PATH="$REPO_ROOT/dist/homebrew/Formula/webhw-hardware-bridge.rb"
 if [[ ! -f "$FORMULA_PATH" ]]; then
   echo "Formula not found: $FORMULA_PATH"
   exit 1
 fi
 
 echo "[2/5] Installing/reinstalling Homebrew formula..."
-TAP_NAME="d4ab/local"
+TAP_NAME="webhw/local"
 if ! brew tap | grep -qx "$TAP_NAME"; then
   brew tap-new "$TAP_NAME" --no-git
 fi
 
 TAP_REPO="$(brew --repo "$TAP_NAME")"
 mkdir -p "$TAP_REPO/Formula"
-cp "$FORMULA_PATH" "$TAP_REPO/Formula/d4ab-hardware-bridge.rb"
+cp "$FORMULA_PATH" "$TAP_REPO/Formula/webhw-hardware-bridge.rb"
 
-if brew list "$TAP_NAME/d4ab-hardware-bridge" >/dev/null 2>&1; then
-  brew reinstall --build-from-source "$TAP_NAME/d4ab-hardware-bridge"
+if brew list "$TAP_NAME/webhw-hardware-bridge" >/dev/null 2>&1; then
+  brew reinstall --build-from-source "$TAP_NAME/webhw-hardware-bridge"
 else
-  brew install --build-from-source "$TAP_NAME/d4ab-hardware-bridge"
+  brew install --build-from-source "$TAP_NAME/webhw-hardware-bridge"
 fi
 
 echo "[3/5] Running native host installer with default policy..."
 node installer/install_native_host.js install --non-interactive
 
 echo "[4/5] Verifying Firefox native messaging manifest..."
-FIREFOX_MANIFEST="$HOME/Library/Application Support/Mozilla/NativeMessagingHosts/com.d4ab.hardware_bridge.json"
+FIREFOX_MANIFEST="$HOME/Library/Application Support/Mozilla/NativeMessagingHosts/com.webhw.hardware_bridge.json"
 if [[ ! -f "$FIREFOX_MANIFEST" ]]; then
   echo "Missing Firefox manifest: $FIREFOX_MANIFEST"
   exit 1

@@ -1,10 +1,10 @@
 {
-  "name": "d4ab-hardware-bridge",
+  "name": "webhw-hardware-bridge",
   "version": "1.0.0",
-  "description": "Native hardware bridge for D4AB browser extension",
+  "description": "Native hardware bridge for WebHW browser extension",
   "main": "src/bridge_cli.js",
   "bin": {
-    "d4ab-bridge": "src/bridge_cli.js"
+    "webhw-bridge": "src/bridge_cli.js"
   },
   "scripts": {
     "start": "node src/bridge_cli.js",
@@ -21,7 +21,7 @@
     "install:linux": "node scripts/install_linux.js"
   },
   "keywords": ["hardware", "native-messaging", "usb", "serial", "bluetooth"],
-  "author": "D4AB Team",
+  "author": "WebHW Team",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"

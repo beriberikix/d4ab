@@ -8,11 +8,11 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-console.log('🔍 Testing D4AB Native Messaging Host...');
+console.log('🔍 Testing WebHW Native Messaging Host...');
 console.log('This simulates Firefox connecting to the native bridge');
 console.log('');
 
-const bridgePath = '/Users/jberi/Applications/D4AB/src/bridge_cli.js';
+const bridgePath = '/Users/jberi/Applications/WebHW/src/bridge_cli.js';
 
 console.log(`Bridge path: ${bridgePath}`);
 console.log(`Bridge exists: ${require('fs').existsSync(bridgePath)}`);

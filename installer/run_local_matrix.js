@@ -34,7 +34,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log('D4AB Local Installer Matrix Runner');
+  console.log('WebHW Local Installer Matrix Runner');
   console.log('');
   console.log('Usage: node installer/run_local_matrix.js [options]');
   console.log('');

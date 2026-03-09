@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  D4AB_AUDIT_LEVEL: critical
+  WEBHW_AUDIT_LEVEL: critical
 
 jobs:
   backend-tests:
@@ -44,7 +44,7 @@ jobs:
         run: npm ci
 
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level="${D4AB_AUDIT_LEVEL}"
+        run: npm audit --omit=dev --audit-level="${WEBHW_AUDIT_LEVEL}"
 
       - name: Run CI-safe tests
         run: npm run test:ci
@@ -76,7 +76,7 @@ jobs:
         run: npm ci
 
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level="${D4AB_AUDIT_LEVEL}"
+        run: npm audit --omit=dev --audit-level="${WEBHW_AUDIT_LEVEL}"
 
       - name: Run CI-safe tests
         run: npm run test:ci

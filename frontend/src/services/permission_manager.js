@@ -10,7 +10,7 @@ export class PermissionManager {
   constructor() {
     this.browserAdapter = new BrowserAdapter();
     this.permissions = new Map(); // In-memory cache
-    this.storageKey = 'd4ab_permissions';
+    this.storageKey = 'webhw_permissions';
     this.defaultTimeout = 300000; // 5 minutes default session timeout
     this.initialized = false;
   }

@@ -74,13 +74,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host '[4/6] Validating installation files...' -ForegroundColor Cyan
-$installDir = Join-Path $env:LOCALAPPDATA 'D4AB'
-$launcherPath = Join-Path $installDir 'd4ab-bridge.cmd'
+$installDir = Join-Path $env:LOCALAPPDATA 'WebHW'
+$launcherPath = Join-Path $installDir 'webhw-bridge.cmd'
 Assert-PathExists -PathToCheck $installDir -Message 'Install directory missing.'
 Assert-PathExists -PathToCheck $launcherPath -Message 'Windows native launcher missing.'
 
 Write-Host '[5/6] Validating Firefox registry + manifest...' -ForegroundColor Cyan
-$firefoxRegistryPath = 'Registry::HKEY_CURRENT_USER\Software\Mozilla\NativeMessagingHosts\com.d4ab.hardware_bridge'
+$firefoxRegistryPath = 'Registry::HKEY_CURRENT_USER\Software\Mozilla\NativeMessagingHosts\com.webhw.hardware_bridge'
 $firefoxManifestPath = Read-RegistryDefaultValue -RegistryPath $firefoxRegistryPath
 Assert-PathExists -PathToCheck $firefoxManifestPath -Message 'Firefox manifest path from registry does not exist.'
 
@@ -92,7 +92,7 @@ Assert-PathExists -PathToCheck $firefoxManifest.path -Message 'Firefox manifest 
 
 if ($WithChrome) {
   Write-Host '[6/6] Validating Chrome registry + manifest...' -ForegroundColor Cyan
-  $chromeRegistryPath = 'Registry::HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.d4ab.hardware_bridge'
+  $chromeRegistryPath = 'Registry::HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.webhw.hardware_bridge'
   $chromeManifestPath = Read-RegistryDefaultValue -RegistryPath $chromeRegistryPath
   Assert-PathExists -PathToCheck $chromeManifestPath -Message 'Chrome manifest path from registry does not exist.'
 

@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 WITH_CHROME=0
-CHROME_EXTENSION_ID="${D4AB_CHROME_EXTENSION_ID:-}"
+CHROME_EXTENSION_ID="${WEBHW_CHROME_EXTENSION_ID:-}"
 
 usage() {
   cat <<'EOF'
@@ -93,26 +93,26 @@ console.log(label + ' manifest path target exists:', manifest.path);
 echo "[1/5] Building local Homebrew artifacts..."
 node installer/build_installer.js --target brew
 
-FORMULA_PATH="$REPO_ROOT/dist/homebrew/Formula/d4ab-hardware-bridge.rb"
+FORMULA_PATH="$REPO_ROOT/dist/homebrew/Formula/webhw-hardware-bridge.rb"
 if [[ ! -f "$FORMULA_PATH" ]]; then
   echo "Formula not found: $FORMULA_PATH"
   exit 1
 fi
 
 echo "[2/5] Installing/reinstalling Homebrew formula..."
-TAP_NAME="d4ab/local"
+TAP_NAME="webhw/local"
 if ! brew tap | grep -qx "$TAP_NAME"; then
   brew tap-new "$TAP_NAME" --no-git
 fi
 
 TAP_REPO="$(brew --repo "$TAP_NAME")"
 mkdir -p "$TAP_REPO/Formula"
-cp "$FORMULA_PATH" "$TAP_REPO/Formula/d4ab-hardware-bridge.rb"
+cp "$FORMULA_PATH" "$TAP_REPO/Formula/webhw-hardware-bridge.rb"
 
-if brew list "$TAP_NAME/d4ab-hardware-bridge" >/dev/null 2>&1; then
-  brew reinstall --build-from-source "$TAP_NAME/d4ab-hardware-bridge"
+if brew list "$TAP_NAME/webhw-hardware-bridge" >/dev/null 2>&1; then
+  brew reinstall --build-from-source "$TAP_NAME/webhw-hardware-bridge"
 else
-  brew install --build-from-source "$TAP_NAME/d4ab-hardware-bridge"
+  brew install --build-from-source "$TAP_NAME/webhw-hardware-bridge"
 fi
 
 echo "[3/5] Running native host installer..."
@@ -130,7 +130,7 @@ fi
 node installer/install_native_host.js "${INSTALL_ARGS[@]}"
 
 echo "[4/5] Verifying Firefox native messaging manifest..."
-FIREFOX_MANIFEST="$HOME/.mozilla/native-messaging-hosts/com.d4ab.hardware_bridge.json"
+FIREFOX_MANIFEST="$HOME/.mozilla/native-messaging-hosts/com.webhw.hardware_bridge.json"
 if [[ ! -f "$FIREFOX_MANIFEST" ]]; then
   echo "Missing Firefox manifest: $FIREFOX_MANIFEST"
   exit 1
@@ -141,9 +141,9 @@ verify_manifest_path_target "$FIREFOX_MANIFEST" "Firefox" "allowed_extensions"
 if [[ "$WITH_CHROME" -eq 1 ]]; then
   echo "[5/5] Verifying Chrome/Chromium native messaging manifest locations..."
   CHROME_CANDIDATES=(
-    "$HOME/.config/google-chrome/NativeMessagingHosts/com.d4ab.hardware_bridge.json"
-    "$HOME/.config/chromium/NativeMessagingHosts/com.d4ab.hardware_bridge.json"
-    "$HOME/.config/chromium-browser/NativeMessagingHosts/com.d4ab.hardware_bridge.json"
+    "$HOME/.config/google-chrome/NativeMessagingHosts/com.webhw.hardware_bridge.json"
+    "$HOME/.config/chromium/NativeMessagingHosts/com.webhw.hardware_bridge.json"
+    "$HOME/.config/chromium-browser/NativeMessagingHosts/com.webhw.hardware_bridge.json"
   )
 
   FOUND_CHROME_MANIFESTS=()

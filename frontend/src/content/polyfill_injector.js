@@ -1,5 +1,5 @@
 /**
- * D4AB Hardware Bridge - Polyfill Injector
+ * WebHW Hardware Bridge - Polyfill Injector
  * Injects Web USB, Serial, and Bluetooth API polyfills into webpages
  */
 
@@ -16,13 +16,13 @@
   'use strict';
 
   // Prevent multiple injections
-  if (window.d4abInjected) {
+  if (window.webhwInjected) {
     return;
   }
-  window.d4abInjected = true;
+  window.webhwInjected = true;
 
-  console.log('D4AB: Polyfill injecting into page context');
-  console.log('D4AB: navigator.usb before injection:', navigator.usb);
+  console.log('WebHW: Polyfill injecting into page context');
+  console.log('WebHW: navigator.usb before injection:', navigator.usb);
 
   /**
    * Communication bridge with background service worker
@@ -41,7 +41,7 @@
      */
     connect() {
       try {
-        console.log('D4AB: Attempting to connect to background script');
+        console.log('WebHW: Attempting to connect to background script');
 
         // Support both Chrome and Firefox extension APIs
         const extensionAPI = (typeof chrome !== 'undefined' && chrome.runtime) ? chrome :
@@ -51,16 +51,16 @@
           throw new Error('Extension runtime not available');
         }
 
-        this.port = extensionAPI.runtime.connect({ name: 'd4ab-hardware-bridge' });
+        this.port = extensionAPI.runtime.connect({ name: 'webhw-hardware-bridge' });
         this.connected = true;
-        console.log('D4AB: Connected to background script successfully');
+        console.log('WebHW: Connected to background script successfully');
 
         this.port.onMessage.addListener((message) => {
           this.handleMessage(message);
         });
 
         this.port.onDisconnect.addListener(() => {
-          console.log('D4AB: Port disconnected');
+          console.log('WebHW: Port disconnected');
           this.connected = false;
           // Attempt reconnection after delay
           setTimeout(() => this.connect(), 1000);
@@ -74,7 +74,7 @@
         }, 30000);
 
       } catch (error) {
-        console.error('D4AB: Failed to connect to extension:', error);
+        console.error('WebHW: Failed to connect to extension:', error);
         this.connected = false;
         // Don't throw error - allow polyfill to continue with mock data
       }
@@ -171,7 +171,7 @@
      */
     handleDeviceEvent(data) {
       // Dispatch custom events for device changes
-      const event = new CustomEvent('d4ab-device-event', {
+      const event = new CustomEvent('webhw-device-event', {
         detail: data
       });
       window.dispatchEvent(event);
@@ -182,14 +182,14 @@
      * @param {Object} data - Error data
      */
     handleNativeError(data) {
-      console.warn('D4AB Native Bridge Error:', data.error);
+      console.warn('WebHW Native Bridge Error:', data.error);
     }
 
     /**
      * Handles native bridge disconnection
      */
     handleNativeDisconnected() {
-      console.warn('D4AB Native Bridge disconnected');
+      console.warn('WebHW Native Bridge disconnected');
     }
   }
 
@@ -713,38 +713,38 @@
   }
 
   // Debug logging before injection
-  console.log('D4AB: About to inject polyfills');
-  console.log('D4AB: navigator.usb before injection:', navigator.usb);
-  console.log('D4AB: chrome available:', typeof chrome !== 'undefined');
-  console.log('D4AB: chrome.runtime available:', typeof chrome !== 'undefined' && chrome.runtime);
-  console.log('D4AB: browser available:', typeof browser !== 'undefined');
-  console.log('D4AB: browser.runtime available:', typeof browser !== 'undefined' && browser.runtime);
+  console.log('WebHW: About to inject polyfills');
+  console.log('WebHW: navigator.usb before injection:', navigator.usb);
+  console.log('WebHW: chrome available:', typeof chrome !== 'undefined');
+  console.log('WebHW: chrome.runtime available:', typeof chrome !== 'undefined' && chrome.runtime);
+  console.log('WebHW: browser available:', typeof browser !== 'undefined');
+  console.log('WebHW: browser.runtime available:', typeof browser !== 'undefined' && browser.runtime);
 
   // Inject polyfills into navigator
   try {
     if (!navigator.usb) {
       navigator.usb = new USBPolyfill();
-      console.log('D4AB: USB polyfill injected successfully');
+      console.log('WebHW: USB polyfill injected successfully');
     } else {
-      console.log('D4AB: navigator.usb already exists');
+      console.log('WebHW: navigator.usb already exists');
     }
 
     if (!navigator.serial) {
       navigator.serial = new SerialPolyfill();
-      console.log('D4AB: Serial polyfill injected successfully');
+      console.log('WebHW: Serial polyfill injected successfully');
     }
 
     if (!navigator.bluetooth) {
       navigator.bluetooth = new BluetoothPolyfill();
-      console.log('D4AB: Bluetooth polyfill injected successfully');
+      console.log('WebHW: Bluetooth polyfill injected successfully');
     }
 
-    console.log('D4AB Hardware Bridge polyfills injected');
-    console.log('D4AB: navigator.usb after injection:', navigator.usb);
-    console.log('D4AB: navigator.usb.getDevices available:', typeof navigator.usb?.getDevices);
+    console.log('WebHW Hardware Bridge polyfills injected');
+    console.log('WebHW: navigator.usb after injection:', navigator.usb);
+    console.log('WebHW: navigator.usb.getDevices available:', typeof navigator.usb?.getDevices);
 
   } catch (error) {
-    console.error('D4AB: Error during polyfill injection:', error);
+    console.error('WebHW: Error during polyfill injection:', error);
   }
 
 })();

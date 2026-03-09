@@ -4,7 +4,7 @@ const yargs = require('yargs');
 const { MessageHandler } = require('./services/message_handler');
 
 /**
- * D4AB Hardware Bridge CLI
+ * WebHW Hardware Bridge CLI
  * Entry point for the native hardware bridge application
  */
 class BridgeCLI {
@@ -53,7 +53,7 @@ class BridgeCLI {
     try {
       // Handle CLI commands
       if (argv['show-version']) {
-        console.log('D4AB Hardware Bridge v1.0.0');
+        console.log('WebHW Hardware Bridge v1.0.0');
         process.exit(0);
       }
 

@@ -1,5 +1,5 @@
 /**
- * D4AB Hardware Bridge - Polyfill Bridge
+ * WebHW Hardware Bridge - Polyfill Bridge
  * Proper architecture with page context polyfill + content script bridge
  */
 
@@ -7,7 +7,7 @@
   'use strict';
 
   // Content script bridge that can communicate with background script
-  class D4ABBridge {
+  class WebHWBridge {
     constructor() {
       this.messageId = 0;
       this.setupMessageHandling();
@@ -16,7 +16,7 @@
     setupMessageHandling() {
       // Listen for messages from page context
       window.addEventListener('message', (event) => {
-        if (event.source !== window || event.data.source !== 'D4AB_PAGE') {
+        if (event.source !== window || event.data.source !== 'WEBHW_PAGE') {
           return;
         }
         this.handlePageMessage(event.data);
@@ -114,14 +114,14 @@
 
         // Send response back to page context
         window.postMessage({
-          source: 'D4AB_BRIDGE',
+          source: 'WEBHW_BRIDGE',
           requestId,
           response
         }, '*');
 
       } catch (error) {
         window.postMessage({
-          source: 'D4AB_BRIDGE',
+          source: 'WEBHW_BRIDGE',
           requestId,
           error: error.message
         }, '*');
@@ -166,7 +166,7 @@
   }
 
   // Initialize bridge
-  new D4ABBridge();
+  new WebHWBridge();
 
   // Inject polyfill into page context
   const script = document.createElement('script');
@@ -174,12 +174,12 @@
 (function() {
   'use strict';
 
-  if (window.d4abInjected) {
+  if (window.webhwInjected) {
     return;
   }
-  window.d4abInjected = true;
+  window.webhwInjected = true;
 
-  console.log('D4AB: Injecting production polyfills');
+  console.log('WebHW: Injecting production polyfills');
 
   // Bridge communication helper
   let messageId = 0;
@@ -196,7 +196,7 @@
       pendingRequests.set(requestId, { resolve, reject, timeout });
 
       window.postMessage({
-        source: 'D4AB_PAGE',
+        source: 'WEBHW_PAGE',
         type,
         payload,
         requestId
@@ -206,7 +206,7 @@
 
   // Listen for responses from bridge
   window.addEventListener('message', (event) => {
-    if (event.source !== window || event.data.source !== 'D4AB_BRIDGE') {
+    if (event.source !== window || event.data.source !== 'WEBHW_BRIDGE') {
       return;
     }
 
@@ -578,26 +578,26 @@
   // Install polyfills
   if (!navigator.usb) {
     navigator.usb = new USBPolyfill();
-    console.log('D4AB: WebUSB polyfill installed');
+    console.log('WebHW: WebUSB polyfill installed');
   }
 
   if (!navigator.serial) {
     navigator.serial = new SerialPolyfill();
-    console.log('D4AB: WebSerial polyfill installed');
+    console.log('WebHW: WebSerial polyfill installed');
   }
 
   if (!navigator.bluetooth) {
     navigator.bluetooth = new BluetoothPolyfill();
-    console.log('D4AB: Web Bluetooth polyfill installed');
+    console.log('WebHW: Web Bluetooth polyfill installed');
   }
 
-  console.log('D4AB: Production polyfills ready');
+  console.log('WebHW: Production polyfills ready');
 })();
 `;
 
   (document.head || document.documentElement).appendChild(script);
   script.remove();
 
-  console.log('D4AB: Bridge initialized and polyfill injected');
+  console.log('WebHW: Bridge initialized and polyfill injected');
 
 })();

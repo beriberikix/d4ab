@@ -16,7 +16,7 @@ class BridgeSession {
     this.messageCount = data.messageCount || 0;
     this.bytesSent = data.bytesSent || 0;
     this.bytesReceived = data.bytesReceived || 0;
-    this.idleTimeoutMs = data.idleTimeoutMs || Number(process.env.D4AB_SESSION_IDLE_TIMEOUT_MS || DEFAULT_IDLE_TIMEOUT_MS);
+    this.idleTimeoutMs = data.idleTimeoutMs || Number(process.env.WEBHW_SESSION_IDLE_TIMEOUT_MS || DEFAULT_IDLE_TIMEOUT_MS);
 
     // Internal state
     this._idleTimer = null;

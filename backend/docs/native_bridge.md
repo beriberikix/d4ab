@@ -1,8 +1,8 @@
-# D4AB Hardware Bridge - Native Bridge Documentation
+# WebHW Hardware Bridge - Native Bridge Documentation
 
 ## Overview
 
-The D4AB Native Bridge is a Node.js application that provides hardware access capabilities to web browsers through a browser extension. It acts as a secure intermediary between web applications and local hardware devices including USB, Serial, and Bluetooth devices.
+The WebHW Native Bridge is a Node.js application that provides hardware access capabilities to web browsers through a browser extension. It acts as a secure intermediary between web applications and local hardware devices including USB, Serial, and Bluetooth devices.
 
 The native bridge is browser-agnostic and works with Chrome, Firefox, Edge, and Safari through their respective extension architectures.
 
@@ -30,10 +30,10 @@ The native bridge is browser-agnostic and works with Chrome, Firefox, Edge, and 
 
 ```bash
 # Download and run installer
-curl -fsSL https://get.d4ab.dev | sh
+curl -fsSL https://get.webhw.dev | sh
 
 # Or via npm
-npm install -g d4ab-hardware-bridge
+npm install -g webhw-hardware-bridge
 ```
 
 ### Manual Installation
@@ -61,7 +61,7 @@ npm link
 npm install -g windows-build-tools
 
 # Install as Windows Service
-d4ab-bridge install-service
+webhw-bridge install-service
 ```
 
 #### macOS
@@ -70,7 +70,7 @@ d4ab-bridge install-service
 xcode-select --install
 
 # Register Launch Agent
-d4ab-bridge install-daemon
+webhw-bridge install-daemon
 ```
 
 #### Linux
@@ -79,7 +79,7 @@ d4ab-bridge install-daemon
 sudo apt-get install build-essential libudev-dev
 
 # Install systemd service
-d4ab-bridge install-service
+webhw-bridge install-service
 ```
 
 ## Command Line Interface
@@ -88,16 +88,16 @@ d4ab-bridge install-service
 
 ```bash
 # Start bridge in foreground
-d4ab-bridge
+webhw-bridge
 
 # Start with debug logging
-d4ab-bridge --debug --log-level debug
+webhw-bridge --debug --log-level debug
 
 # Show version
-d4ab-bridge --version
+webhw-bridge --version
 
 # Display help
-d4ab-bridge --help
+webhw-bridge --help
 ```
 
 ### Available Commands
@@ -105,40 +105,40 @@ d4ab-bridge --help
 #### Device Enumeration
 ```bash
 # List all devices
-d4ab-bridge --enumerate all
+webhw-bridge --enumerate all
 
 # List USB devices only
-d4ab-bridge --enumerate usb
+webhw-bridge --enumerate usb
 
 # List serial ports
-d4ab-bridge --enumerate serial
+webhw-bridge --enumerate serial
 
 # List Bluetooth devices
-d4ab-bridge --enumerate bluetooth
+webhw-bridge --enumerate bluetooth
 ```
 
 #### Device Connection
 ```bash
 # Connect to specific device
-d4ab-bridge --connect usb:1234:5678
+webhw-bridge --connect usb:1234:5678
 
 # Connect with custom options
-d4ab-bridge --connect serial:COM1 --baud-rate 9600
+webhw-bridge --connect serial:COM1 --baud-rate 9600
 ```
 
 #### Configuration
 ```bash
 # Set log level
-d4ab-bridge --log-level info
+webhw-bridge --log-level info
 
 # Set custom log file
-d4ab-bridge --log-file /var/log/d4ab-bridge.log
+webhw-bridge --log-file /var/log/webhw-bridge.log
 
 # Enable performance monitoring
-d4ab-bridge --monitor
+webhw-bridge --monitor
 
 # Set maximum concurrent connections
-d4ab-bridge --max-connections 5
+webhw-bridge --max-connections 5
 ```
 
 ## JSON-RPC API
@@ -380,13 +380,13 @@ Built on `@abandonware/noble` for Bluetooth Low Energy communication.
 
 ### Configuration File
 
-Located at `~/.d4ab/config.json`:
+Located at `~/.webhw/config.json`:
 
 ```json
 {
   "logging": {
     "level": "info",
-    "file": "~/.d4ab/logs/bridge.log",
+    "file": "~/.webhw/logs/bridge.log",
     "maxSize": "10MB",
     "maxFiles": 5
   },
@@ -414,19 +414,19 @@ Located at `~/.d4ab/config.json`:
 
 ```bash
 # Log level override
-export D4AB_LOG_LEVEL=debug
+export WEBHW_LOG_LEVEL=debug
 
 # Custom config file
-export D4AB_CONFIG_FILE=/etc/d4ab/config.json
+export WEBHW_CONFIG_FILE=/etc/webhw/config.json
 
 # Disable specific hardware types
-export D4AB_DISABLE_USB=true
-export D4AB_DISABLE_SERIAL=false
-export D4AB_DISABLE_BLUETOOTH=false
+export WEBHW_DISABLE_USB=true
+export WEBHW_DISABLE_SERIAL=false
+export WEBHW_DISABLE_BLUETOOTH=false
 
 # Performance tuning
-export D4AB_MAX_CONNECTIONS=5
-export D4AB_CACHE_DURATION=600000
+export WEBHW_MAX_CONNECTIONS=5
+export WEBHW_CACHE_DURATION=600000
 ```
 
 ## Security
@@ -473,7 +473,7 @@ The bridge implements a multi-layered permission system:
 
 ```bash
 # Enable monitoring
-d4ab-bridge --monitor
+webhw-bridge --monitor
 
 # View real-time stats
 curl http://localhost:8080/stats
@@ -496,20 +496,20 @@ ls -la /dev/tty*  # Serial permissions
 lsusb             # USB device visibility
 
 # Check logs
-tail -f ~/.d4ab/logs/bridge.log
+tail -f ~/.webhw/logs/bridge.log
 ```
 
 #### Device Not Found
 ```bash
 # List system devices
-d4ab-bridge --enumerate all --verbose
+webhw-bridge --enumerate all --verbose
 
 # Check device permissions
 sudo usermod -a -G dialout $USER  # Linux serial
 # Logout and login again
 
 # Verify USB rules (Linux)
-sudo cp misc/99-d4ab.rules /etc/udev/rules.d/
+sudo cp misc/99-webhw.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 ```
 
@@ -519,7 +519,7 @@ sudo udevadm control --reload-rules
 sudo dmesg | tail  # Check for hardware errors
 
 # Verify bridge connectivity
-echo '{"jsonrpc":"2.0","method":"heartbeat","id":1}' | d4ab-bridge
+echo '{"jsonrpc":"2.0","method":"heartbeat","id":1}' | webhw-bridge
 
 # Check native messaging
 chrome://extensions  # Verify extension loaded
@@ -528,27 +528,27 @@ chrome://extensions  # Verify extension loaded
 #### Performance Issues
 ```bash
 # Monitor resource usage
-d4ab-bridge --monitor &
+webhw-bridge --monitor &
 htop  # Watch CPU/memory usage
 
 # Reduce concurrent connections
-d4ab-bridge --max-connections 3
+webhw-bridge --max-connections 3
 
 # Disable unused hardware types
-export D4AB_DISABLE_BLUETOOTH=true
+export WEBHW_DISABLE_BLUETOOTH=true
 ```
 
 ### Debug Mode
 
 ```bash
 # Start with maximum verbosity
-d4ab-bridge --debug --log-level trace --monitor
+webhw-bridge --debug --log-level trace --monitor
 
 # Enable specific debug categories
-DEBUG=d4ab:usb,d4ab:serial d4ab-bridge
+DEBUG=webhw:usb,webhw:serial webhw-bridge
 
 # Profile performance
-node --prof d4ab-bridge
+node --prof webhw-bridge
 ```
 
 ## Development
@@ -590,7 +590,7 @@ npm run dev
 npm run dev:debug
 
 # Run with specific hardware enabled
-D4AB_ENABLE_USB=true D4AB_ENABLE_SERIAL=true npm run dev
+WEBHW_ENABLE_USB=true WEBHW_ENABLE_SERIAL=true npm run dev
 
 # Profile performance
 npm run profile
@@ -720,7 +720,7 @@ node src/bridge_cli.js --debug --native-messaging 2>debug.log
 
 ```javascript
 // Test from browser extension
-chrome.runtime.sendNativeMessage('com.d4ab.hardware.bridge', {
+chrome.runtime.sendNativeMessage('com.webhw.hardware.bridge', {
   jsonrpc: '2.0',
   method: 'heartbeat',
   id: 'test123'
@@ -769,8 +769,8 @@ npm run package:linux
 
 ```bash
 # Enable debug logging
-export D4AB_LOG_LEVEL=debug
-export D4AB_DEBUG_CATEGORIES=usb,serial,bluetooth
+export WEBHW_LOG_LEVEL=debug
+export WEBHW_DEBUG_CATEGORIES=usb,serial,bluetooth
 
 # Start with Node.js debugger
 node --inspect src/bridge_cli.js
@@ -861,10 +861,10 @@ node src/bridge_cli.js --check-permissions
 
 ```bash
 # Check for updates
-d4ab-bridge --check-update
+webhw-bridge --check-update
 
 # Update to latest version
-npm update -g d4ab-hardware-bridge
+npm update -g webhw-hardware-bridge
 
 # Update development installation
 git pull && npm install && npm run build
@@ -874,13 +874,13 @@ git pull && npm install && npm run build
 
 ```bash
 # Backup configuration
-cp ~/.d4ab/config.json ~/d4ab-config-backup.json
+cp ~/.webhw/config.json ~/webhw-config-backup.json
 
 # Reset to defaults
-rm -rf ~/.d4ab && d4ab-bridge --init
+rm -rf ~/.webhw && webhw-bridge --init
 
 # Restore configuration
-cp ~/d4ab-config-backup.json ~/.d4ab/config.json
+cp ~/webhw-config-backup.json ~/.webhw/config.json
 ```
 
 ## License and Legal

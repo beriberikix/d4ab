@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "D4AB Hardware Bridge",
+  "name": "WebHW Hardware Bridge",
   "version": "1.0.0",
   "description": "Enables Web USB, Serial, and Bluetooth APIs in all browsers through native bridge",
   "permissions": [
@@ -49,7 +49,7 @@
   ],
   "action": {
     "default_popup": "src/popup/popup.html",
-    "default_title": "D4AB Hardware Bridge",
+    "default_title": "WebHW Hardware Bridge",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"

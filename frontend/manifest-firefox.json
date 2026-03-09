@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "name": "D4AB Hardware Bridge",
+  "name": "WebHW Hardware Bridge",
   "version": "1.0.0",
   "description": "Enables Web USB, Serial, and Bluetooth APIs in Firefox through native bridge",
   "permissions": [
@@ -40,7 +40,7 @@
   "content_security_policy": "script-src 'self'; object-src 'none'; connect-src 'self';",
   "browser_action": {
     "default_popup": "src/popup/popup.html",
-    "default_title": "D4AB Hardware Bridge",
+    "default_title": "WebHW Hardware Bridge",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
@@ -58,7 +58,7 @@
   },
   "applications": {
     "gecko": {
-      "id": "d4ab-bridge@d4ab.com",
+      "id": "webhw-bridge@webhw.dev",
       "strict_min_version": "58.0"
     }
   },

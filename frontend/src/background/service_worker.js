@@ -1,5 +1,5 @@
 /**
- * D4AB Hardware Bridge - Background Service Worker
+ * WebHW Hardware Bridge - Background Service Worker
  * Handles Native Messaging communication and permission management
  */
 
@@ -15,9 +15,9 @@ class BackgroundServiceWorker {
     this.connections = new Map(); // Tab ID -> connection info
     this.permissions = new Map(); // `${origin}:${deviceId}` -> Set(capabilities)
     this.permissionMeta = new Map();
-    this.permissionStorageKey = 'd4ab_worker_permissions';
-    this.permissionMetaStorageKey = 'd4ab_worker_permission_meta';
-    this.telemetryStorageKey = 'd4ab_worker_telemetry';
+    this.permissionStorageKey = 'webhw_worker_permissions';
+    this.permissionMetaStorageKey = 'webhw_worker_permission_meta';
+    this.telemetryStorageKey = 'webhw_worker_telemetry';
     this.telemetryLimit = 300;
     this.telemetry = [];
     this.chooserRequests = new Map();
@@ -50,7 +50,7 @@ class BackgroundServiceWorker {
       this.recordTelemetry('info', 'worker', 'Background worker initialized', {
         nativeConnected: !!this.nativePort
       });
-      console.log('D4AB Background Service Worker initialized');
+      console.log('WebHW Background Service Worker initialized');
 
     } catch (error) {
       console.error('Service Worker initialization failed:', error);
@@ -63,10 +63,10 @@ class BackgroundServiceWorker {
    */
   async initializeNativeMessaging() {
     try {
-      console.log('Attempting to connect to native host: com.d4ab.hardware_bridge');
+      console.log('Attempting to connect to native host: com.webhw.hardware_bridge');
 
       // Connect to native messaging host
-      this.nativePort = chrome.runtime.connectNative('com.d4ab.hardware_bridge');
+      this.nativePort = chrome.runtime.connectNative('com.webhw.hardware_bridge');
 
       // Check immediately for connection errors
       if (chrome.runtime.lastError) {
@@ -438,7 +438,7 @@ class BackgroundServiceWorker {
     const { method, params = {} } = payload;
     const origin = this.getSenderOrigin(sender);
 
-    console.log('D4AB: Handling device request:', method, params);
+    console.log('WebHW: Handling device request:', method, params);
 
     try {
       if (method === 'requestDevice') {
@@ -484,7 +484,7 @@ class BackgroundServiceWorker {
         return;
       }
 
-      console.error('D4AB: Native bridge failed:', error.message);
+      console.error('WebHW: Native bridge failed:', error.message);
       this.recordTelemetry('error', 'request', 'Native bridge request failed', {
         method,
         type: params.type,
@@ -1151,7 +1151,7 @@ class BackgroundServiceWorker {
   async handleAPICall(payload, sender, sendResponse) {
     const { method, params, deviceId } = payload;
 
-    console.log('D4AB: Handling API call:', method, params, deviceId);
+    console.log('WebHW: Handling API call:', method, params, deviceId);
 
     try {
       const origin = this.getSenderOrigin(sender);
@@ -1179,7 +1179,7 @@ class BackgroundServiceWorker {
       sendResponse(this.normalizeAPIResponse(method, result));
 
     } catch (error) {
-      console.error('D4AB: Native bridge failed for API call:', error.message);
+      console.error('WebHW: Native bridge failed for API call:', error.message);
       sendResponse(this.createNativeErrorResponse(error, method, { ...(params || {}), deviceId }));
     }
   }
@@ -1268,7 +1268,7 @@ class BackgroundServiceWorker {
    * @param {Object} port - Chrome runtime port
    */
   handlePortConnection(port) {
-    if (port.name === 'd4ab-hardware-bridge') {
+    if (port.name === 'webhw-hardware-bridge') {
       const tabId = port.sender.tab?.id;
 
       if (tabId) {
@@ -1546,7 +1546,7 @@ class BackgroundServiceWorker {
     const label = deviceData.name || deviceData.productName || deviceData.id || 'Unknown device';
     const message = `${label} (${deviceData.type || 'hardware'})`;
 
-    chrome.notifications.create(`d4ab_${Date.now()}`, {
+    chrome.notifications.create(`webhw_${Date.now()}`, {
       type: 'basic',
       iconUrl: 'icons/icon-48.png',
       title,
