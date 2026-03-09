@@ -30,8 +30,8 @@ jobs:
 
           release_version="${GITHUB_REF_NAME#v}"
           release_base_version="${release_version%%-*}"
-          backend_version="$(node -p \"require('./backend/package.json').version\")"
-          frontend_version="$(node -p \"require('./frontend/package.json').version\")"
+          backend_version="$(node -p "require('./backend/package.json').version")"
+          frontend_version="$(node -p "require('./frontend/package.json').version")"
 
           if [[ "${backend_version}" != "${release_base_version}" ]]; then
             echo "backend/package.json version (${backend_version}) does not match base tag version (${release_base_version}) from ${release_version}."
