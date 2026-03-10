@@ -279,7 +279,7 @@ webhw-install-native-host install --open-guidance
 # Explicitly enable both Firefox and Chrome
 webhw-install-native-host install --browsers firefox,chrome
 
-# Validate registration and detect leftover legacy artifacts
+# Validate installation and host registration state
 webhw-install-native-host doctor
 ```
 
