@@ -891,10 +891,7 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
     // Create registry entry
-    const baseKey = browser === 'firefox'
-      ? 'HKEY_CURRENT_USER\\\\Software\\\\Mozilla\\\\NativeMessagingHosts'
-      : 'HKEY_CURRENT_USER\\\\Software\\\\Google\\\\Chrome\\\\NativeMessagingHosts';
-    const regKey = `${baseKey}\\\\com.webhw.hardware_bridge`;
+    const regKey = `${this.getWindowsNativeMessagingBaseKey(browser)}\\com.webhw.hardware_bridge`;
 
     try {
       execSync(`reg add "${regKey}" /ve /d "${manifestPath}" /f`, { stdio: 'pipe' });
