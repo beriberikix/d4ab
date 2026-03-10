@@ -336,6 +336,7 @@ node installer/run_local_matrix.js --with-chrome --chrome-extension-id <your_chr
 
 See `installer/README.md` for the installer behavior contract and per-OS registration details.
 See `PRODUCTIZATION_CHECKLIST.md` for release go/no-go gates and production readiness criteria.
+Use `.github/PULL_REQUEST_TEMPLATE/release.md` for release PRs.
 
 The installer creates platform-specific packages:
 - **Windows**: `.exe` installer and `.zip` package

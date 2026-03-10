@@ -2,6 +2,11 @@
 
 Use this as the release go/no-go checklist for production launches.
 
+Release PR template:
+
+- Preferred template: `.github/PULL_REQUEST_TEMPLATE/release.md`
+- GitHub URL query option: append `?template=release.md` when opening the release PR.
+
 ## 1. Scope Lock
 
 - [ ] Product name and package identity are `WebHW` only.
