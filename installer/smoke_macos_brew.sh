@@ -16,7 +16,7 @@ fi
 
 cd "$REPO_ROOT"
 
-echo "[1/5] Building local Homebrew artifacts..."
+echo "[1/6] Building local Homebrew artifacts..."
 node installer/build_installer.js --target brew
 
 FORMULA_PATH="$REPO_ROOT/dist/homebrew/Formula/webhw-hardware-bridge.rb"
@@ -25,7 +25,7 @@ if [[ ! -f "$FORMULA_PATH" ]]; then
   exit 1
 fi
 
-echo "[2/5] Installing/reinstalling Homebrew formula..."
+echo "[2/6] Installing/reinstalling Homebrew formula..."
 TAP_NAME="webhw/local"
 if ! brew tap | grep -qx "$TAP_NAME"; then
   brew tap-new "$TAP_NAME" --no-git
@@ -41,10 +41,13 @@ else
   brew install --build-from-source "$TAP_NAME/webhw-hardware-bridge"
 fi
 
-echo "[3/5] Running native host installer with default policy..."
+echo "[3/6] Running native host installer with default policy..."
 node installer/install_native_host.js install --non-interactive
 
-echo "[4/5] Verifying Firefox native messaging manifest..."
+echo "[4/6] Running installer doctor checks..."
+node installer/install_native_host.js doctor
+
+echo "[5/6] Verifying Firefox native messaging manifest..."
 FIREFOX_MANIFEST="$HOME/Library/Application Support/Mozilla/NativeMessagingHosts/com.webhw.hardware_bridge.json"
 if [[ ! -f "$FIREFOX_MANIFEST" ]]; then
   echo "Missing Firefox manifest: $FIREFOX_MANIFEST"
@@ -64,5 +67,5 @@ if (!fs.existsSync(manifest.path)) {
 console.log('Firefox manifest path target exists:', manifest.path);
 " "$FIREFOX_MANIFEST"
 
-echo "[5/5] Smoke test completed successfully."
+echo "[6/6] Smoke test completed successfully."
 echo "You can now load the local extension in Firefox and validate runtime behavior."

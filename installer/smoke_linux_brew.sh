@@ -90,7 +90,7 @@ console.log(label + ' manifest path target exists:', manifest.path);
 " "$manifest_path" "$label" "$required_key"
 }
 
-echo "[1/5] Building local Homebrew artifacts..."
+echo "[1/6] Building local Homebrew artifacts..."
 node installer/build_installer.js --target brew
 
 FORMULA_PATH="$REPO_ROOT/dist/homebrew/Formula/webhw-hardware-bridge.rb"
@@ -99,7 +99,7 @@ if [[ ! -f "$FORMULA_PATH" ]]; then
   exit 1
 fi
 
-echo "[2/5] Installing/reinstalling Homebrew formula..."
+echo "[2/6] Installing/reinstalling Homebrew formula..."
 TAP_NAME="webhw/local"
 if ! brew tap | grep -qx "$TAP_NAME"; then
   brew tap-new "$TAP_NAME" --no-git
@@ -115,7 +115,7 @@ else
   brew install --build-from-source "$TAP_NAME/webhw-hardware-bridge"
 fi
 
-echo "[3/5] Running native host installer..."
+echo "[3/6] Running native host installer..."
 INSTALL_ARGS=(install --non-interactive)
 if [[ "$WITH_CHROME" -eq 1 ]]; then
   INSTALL_ARGS+=(--browsers firefox,chrome)
@@ -129,7 +129,10 @@ fi
 
 node installer/install_native_host.js "${INSTALL_ARGS[@]}"
 
-echo "[4/5] Verifying Firefox native messaging manifest..."
+echo "[4/6] Running installer doctor checks..."
+node installer/install_native_host.js doctor
+
+echo "[5/6] Verifying Firefox native messaging manifest..."
 FIREFOX_MANIFEST="$HOME/.mozilla/native-messaging-hosts/com.webhw.hardware_bridge.json"
 if [[ ! -f "$FIREFOX_MANIFEST" ]]; then
   echo "Missing Firefox manifest: $FIREFOX_MANIFEST"
@@ -139,7 +142,7 @@ fi
 verify_manifest_path_target "$FIREFOX_MANIFEST" "Firefox" "allowed_extensions"
 
 if [[ "$WITH_CHROME" -eq 1 ]]; then
-  echo "[5/5] Verifying Chrome/Chromium native messaging manifest locations..."
+  echo "[6/6] Verifying Chrome/Chromium native messaging manifest locations..."
   CHROME_CANDIDATES=(
     "$HOME/.config/google-chrome/NativeMessagingHosts/com.webhw.hardware_bridge.json"
     "$HOME/.config/chromium/NativeMessagingHosts/com.webhw.hardware_bridge.json"
@@ -166,4 +169,4 @@ if [[ "$WITH_CHROME" -eq 1 ]]; then
   done
 fi
 
-echo "Smoke test completed successfully."
+echo "[6/6] Smoke test completed successfully."

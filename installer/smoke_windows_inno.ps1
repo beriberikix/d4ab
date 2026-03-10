@@ -34,7 +34,7 @@ function Read-RegistryDefaultValue([string]$RegistryPath) {
   return $item.GetValue('')
 }
 
-Write-Host '[1/6] Building Windows installer assets...' -ForegroundColor Cyan
+Write-Host '[1/7] Building Windows installer assets...' -ForegroundColor Cyan
 & node installer/build_installer.js --platform win32 --arch x64
 if ($LASTEXITCODE -ne 0) {
   throw 'Windows installer build failed.'
@@ -43,7 +43,7 @@ if ($LASTEXITCODE -ne 0) {
 $installerScriptPath = Join-Path $PWD 'dist/win32-x64/installer.iss'
 Assert-PathExists -PathToCheck $installerScriptPath -Message 'Expected Inno Setup script was not generated.'
 
-Write-Host '[2/6] Checking Inno compiler availability...' -ForegroundColor Cyan
+Write-Host '[2/7] Checking Inno compiler availability...' -ForegroundColor Cyan
 $innoCompiler = Get-InnoCompiler
 if ($innoCompiler) {
   Write-Host "Inno compiler found: $innoCompiler"
@@ -55,7 +55,7 @@ if ($innoCompiler) {
   Write-Host 'Inno compiler not found. Verified installer.iss scaffold only.' -ForegroundColor Yellow
 }
 
-Write-Host '[3/6] Running native host installation (Windows path)...' -ForegroundColor Cyan
+Write-Host '[3/7] Running native host installation (Windows path)...' -ForegroundColor Cyan
 $selectedBrowsers = if ($WithChrome) { 'firefox,chrome' } else { 'firefox' }
 $installArgs = @('installer/install_native_host.js', 'install', '--non-interactive', '--browsers', $selectedBrowsers)
 
@@ -73,13 +73,19 @@ if ($LASTEXITCODE -ne 0) {
   throw 'Native host installation failed.'
 }
 
-Write-Host '[4/6] Validating installation files...' -ForegroundColor Cyan
+Write-Host '[4/7] Running installer doctor checks...' -ForegroundColor Cyan
+& node installer/install_native_host.js doctor
+if ($LASTEXITCODE -ne 0) {
+  throw 'Installer doctor checks failed.'
+}
+
+Write-Host '[5/7] Validating installation files...' -ForegroundColor Cyan
 $installDir = Join-Path $env:LOCALAPPDATA 'WebHW'
 $launcherPath = Join-Path $installDir 'webhw-bridge.cmd'
 Assert-PathExists -PathToCheck $installDir -Message 'Install directory missing.'
 Assert-PathExists -PathToCheck $launcherPath -Message 'Windows native launcher missing.'
 
-Write-Host '[5/6] Validating Firefox registry + manifest...' -ForegroundColor Cyan
+Write-Host '[6/7] Validating Firefox registry + manifest...' -ForegroundColor Cyan
 $firefoxRegistryPath = 'Registry::HKEY_CURRENT_USER\Software\Mozilla\NativeMessagingHosts\com.webhw.hardware_bridge'
 $firefoxManifestPath = Read-RegistryDefaultValue -RegistryPath $firefoxRegistryPath
 Assert-PathExists -PathToCheck $firefoxManifestPath -Message 'Firefox manifest path from registry does not exist.'
@@ -91,7 +97,7 @@ if (-not $firefoxManifest.allowed_extensions) {
 Assert-PathExists -PathToCheck $firefoxManifest.path -Message 'Firefox manifest binary path does not exist.'
 
 if ($WithChrome) {
-  Write-Host '[6/6] Validating Chrome registry + manifest...' -ForegroundColor Cyan
+  Write-Host '[7/7] Validating Chrome registry + manifest...' -ForegroundColor Cyan
   $chromeRegistryPath = 'Registry::HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.webhw.hardware_bridge'
   $chromeManifestPath = Read-RegistryDefaultValue -RegistryPath $chromeRegistryPath
   Assert-PathExists -PathToCheck $chromeManifestPath -Message 'Chrome manifest path from registry does not exist.'
@@ -102,7 +108,7 @@ if ($WithChrome) {
   }
   Assert-PathExists -PathToCheck $chromeManifest.path -Message 'Chrome manifest binary path does not exist.'
 } else {
-  Write-Host '[6/6] Chrome verification skipped (run with -WithChrome to include it).' -ForegroundColor Cyan
+  Write-Host '[7/7] Chrome verification skipped (run with -WithChrome to include it).' -ForegroundColor Cyan
 }
 
 Write-Host 'Windows Inno smoke test completed successfully.' -ForegroundColor Green

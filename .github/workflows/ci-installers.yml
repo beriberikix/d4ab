@@ -37,6 +37,45 @@ permissions:
   contents: read
 
 jobs:
+  installer-doctor-smoke:
+    name: Installer Doctor Smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Run installer doctor smoke (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          node installer/install_native_host.js install --non-interactive --browsers firefox --no-open-guidance
+          node installer/install_native_host.js doctor
+          node installer/install_native_host.js uninstall
+
+      - name: Run installer doctor smoke (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          node installer/install_native_host.js install --non-interactive --browsers firefox --no-open-guidance
+          if ($LASTEXITCODE -ne 0) { throw 'Native host install failed.' }
+
+          node installer/install_native_host.js doctor
+          if ($LASTEXITCODE -ne 0) { throw 'Installer doctor failed.' }
+
+          node installer/install_native_host.js uninstall
+          if ($LASTEXITCODE -ne 0) { throw 'Native host uninstall failed.' }
+
   build-platform-installers:
     name: Build Platform Installer (${{ matrix.os }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
