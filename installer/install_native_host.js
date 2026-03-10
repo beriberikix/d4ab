@@ -825,6 +825,185 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
     }
   }
 
+  getWindowsNativeMessagingBaseKey(browser = 'chrome') {
+    return browser === 'firefox'
+      ? 'HKEY_CURRENT_USER\\Software\\Mozilla\\NativeMessagingHosts'
+      : 'HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts';
+  }
+
+  parseWindowsRegistryDefaultValue(queryOutput = '') {
+    const lines = String(queryOutput)
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    for (const line of lines) {
+      // Expected formats include: "(Default)    REG_SZ    C:\\path\\to\\manifest.json"
+      const regMatch = line.match(/^\(Default\)\s+REG_\w+\s+(.+)$/i);
+      if (regMatch && regMatch[1]) {
+        return regMatch[1].trim();
+      }
+    }
+
+    return null;
+  }
+
+  getRegisteredHostEntries(browser = 'chrome', hostId = 'com.webhw.hardware_bridge') {
+    if (this.platform === 'win32') {
+      const baseKey = this.getWindowsNativeMessagingBaseKey(browser);
+      const regKey = `${baseKey}\\${hostId}`;
+
+      try {
+        const output = execSync(`reg query "${regKey}" /ve`, { stdio: 'pipe' }).toString();
+        const manifestPath = this.parseWindowsRegistryDefaultValue(output);
+        return [{
+          browser,
+          type: 'registry',
+          regKey,
+          manifestPath,
+          manifestExists: Boolean(manifestPath && fs.existsSync(manifestPath))
+        }];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    const entries = [];
+    for (const hostDir of this.getHostRegistryPaths(browser)) {
+      const manifestPath = path.join(hostDir, `${hostId}.json`);
+      if (fs.existsSync(manifestPath)) {
+        entries.push({
+          browser,
+          type: 'manifest',
+          manifestPath,
+          manifestExists: true
+        });
+      }
+    }
+
+    return entries;
+  }
+
+  findLegacyArtifacts() {
+    const legacyFindings = [];
+
+    for (const legacyInstallDir of this.getLegacyInstallDirs()) {
+      if (legacyInstallDir !== this.installDir && fs.existsSync(legacyInstallDir)) {
+        legacyFindings.push(`legacy install dir: ${legacyInstallDir}`);
+      }
+    }
+
+    const legacyIds = this.getLegacyHostIdentifiers();
+
+    if (this.platform === 'win32') {
+      for (const browser of ['chrome', 'firefox']) {
+        const baseKey = this.getWindowsNativeMessagingBaseKey(browser);
+        for (const legacyId of legacyIds) {
+          const regKey = `${baseKey}\\${legacyId}`;
+          try {
+            execSync(`reg query "${regKey}" /ve`, { stdio: 'pipe' });
+            legacyFindings.push(`legacy registry key: ${regKey}`);
+          } catch (error) {
+            // Missing legacy key is expected on clean installs.
+          }
+        }
+      }
+
+      return legacyFindings;
+    }
+
+    for (const browser of ['chrome', 'firefox']) {
+      for (const hostDir of this.getHostRegistryPaths(browser)) {
+        for (const legacyId of legacyIds) {
+          const legacyManifestPath = path.join(hostDir, `${legacyId}.json`);
+          if (fs.existsSync(legacyManifestPath)) {
+            legacyFindings.push(`legacy host manifest: ${legacyManifestPath}`);
+          }
+        }
+      }
+    }
+
+    return legacyFindings;
+  }
+
+  async doctor() {
+    console.log('Running WebHW native host doctor...');
+
+    let hasErrors = false;
+    let hasWarnings = false;
+
+    if (fs.existsSync(this.installDir)) {
+      console.log(`✅ Install directory exists: ${this.installDir}`);
+    } else {
+      hasErrors = true;
+      console.log(`❌ Install directory missing: ${this.installDir}`);
+    }
+
+    const bridgeEntrypoint = path.join(this.installDir, 'src', 'bridge_cli.js');
+    if (fs.existsSync(bridgeEntrypoint)) {
+      console.log(`✅ Bridge entrypoint exists: ${bridgeEntrypoint}`);
+    } else {
+      hasErrors = true;
+      console.log(`❌ Bridge entrypoint missing: ${bridgeEntrypoint}`);
+    }
+
+    let registrationCount = 0;
+    for (const browser of ['firefox', 'chrome']) {
+      const entries = this.getRegisteredHostEntries(browser, 'com.webhw.hardware_bridge');
+      registrationCount += entries.length;
+
+      if (entries.length === 0) {
+        hasWarnings = true;
+        console.log(`⚠️  No WebHW host registration found for ${browser}.`);
+        continue;
+      }
+
+      for (const entry of entries) {
+        if (entry.type === 'registry') {
+          const targetPath = entry.manifestPath || '<unknown>'; // Should normally be a JSON manifest path.
+          if (entry.manifestExists) {
+            console.log(`✅ ${browser} registry key set: ${entry.regKey} -> ${targetPath}`);
+          } else {
+            hasErrors = true;
+            console.log(`❌ ${browser} registry key points to missing manifest: ${targetPath}`);
+          }
+        } else {
+          console.log(`✅ ${browser} host manifest present: ${entry.manifestPath}`);
+        }
+      }
+    }
+
+    if (registrationCount === 0) {
+      hasErrors = true;
+      console.log('❌ No active WebHW host registration was found for Firefox or Chrome.');
+    }
+
+    const legacyFindings = this.findLegacyArtifacts();
+    if (legacyFindings.length === 0) {
+      console.log('✅ No legacy D4AB artifacts detected.');
+    } else {
+      hasWarnings = true;
+      console.log('⚠️  Legacy D4AB artifacts still present:');
+      for (const finding of legacyFindings) {
+        console.log(`   • ${finding}`);
+      }
+      console.log('   Run "node installer/install_native_host.js install" or "... uninstall" to trigger cleanup.');
+    }
+
+    if (hasErrors) {
+      console.log('❌ Doctor found blocking issues.');
+      process.exitCode = 1;
+      return;
+    }
+
+    if (hasWarnings) {
+      console.log('⚠️  Doctor completed with warnings.');
+      return;
+    }
+
+    console.log('✅ Doctor checks passed.');
+  }
+
   /**
    * Registers native messaging host on Windows
    */
@@ -923,8 +1102,8 @@ echo %DATE% %TIME%: launching native host with "%NODE_BIN%">>"%LOG_DIR%\\windows
       // Remove host registration
       if (this.platform === 'win32') {
         try {
-          execSync('reg delete "HKEY_CURRENT_USER\\\\Software\\\\Google\\\\Chrome\\\\NativeMessagingHosts\\\\com.webhw.hardware_bridge" /f', { stdio: 'pipe' });
-          execSync('reg delete "HKEY_CURRENT_USER\\\\Software\\\\Mozilla\\\\NativeMessagingHosts\\\\com.webhw.hardware_bridge" /f', { stdio: 'pipe' });
+          execSync(`reg delete "${this.getWindowsNativeMessagingBaseKey('chrome')}\\com.webhw.hardware_bridge" /f`, { stdio: 'pipe' });
+          execSync(`reg delete "${this.getWindowsNativeMessagingBaseKey('firefox')}\\com.webhw.hardware_bridge" /f`, { stdio: 'pipe' });
           console.log('✅ Registry entry removed');
         } catch (error) {
           console.warn('⚠️  Could not remove registry entry');
@@ -978,6 +1157,11 @@ if (require.main === module) {
       installer.uninstall();
       break;
 
+    case 'doctor':
+    case 'status':
+      installer.doctor();
+      break;
+
     default:
       console.log('WebHW Native Messaging Host Installer');
       console.log('');
@@ -985,6 +1169,7 @@ if (require.main === module) {
       console.log('  node install_native_host.js install     - Install the native messaging host');
       console.log('  node install_native_host.js uninstall   - Uninstall the native messaging host');
       console.log('  node install_native_host.js list-browsers - Show detected browsers');
+      console.log('  node install_native_host.js doctor      - Validate install and host registration state');
       console.log('');
       console.log('Install options:');
       console.log('  --browsers firefox,chrome   Explicit browser targets');

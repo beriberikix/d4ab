@@ -278,6 +278,9 @@ webhw-install-native-host install --open-guidance
 
 # Explicitly enable both Firefox and Chrome
 webhw-install-native-host install --browsers firefox,chrome
+
+# Validate registration and detect leftover legacy artifacts
+webhw-install-native-host doctor
 ```
 
 One-command local smoke test on macOS:
@@ -310,6 +313,9 @@ node .\installer\install_native_host.js install --non-interactive --browsers fir
 
 # Optional: include Chrome registration (pass real extension ID when available)
 node .\installer\install_native_host.js install --non-interactive --browsers firefox,chrome --allow-placeholder-ids
+
+# Validate registration state after install/upgrade
+node .\installer\install_native_host.js doctor
 ```
 
 One-command local smoke test on Windows:

@@ -34,6 +34,16 @@ Options:
 - `--cleanup-stale-manifests`: remove stale host registrations for unselected browsers (default).
 - `--no-cleanup-stale-manifests`: keep existing stale host registrations.
 
+Health check command:
+
+```bash
+node installer/install_native_host.js doctor
+```
+
+- Alias: `node installer/install_native_host.js status`
+- Exit code `0`: no blocking issues were found.
+- Exit code `1`: blocking issues were detected (missing install files or no active host registration).
+
 Upgrade behavior:
 
 - Installer now performs best-effort cleanup of legacy `D4AB` registrations (`com.d4ab.hardware_bridge`) and old install directory paths during `install` and `uninstall`.
